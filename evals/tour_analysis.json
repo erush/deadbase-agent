@@ -1,0 +1,37 @@
+{
+  "skill": "tour-analysis",
+  "cases": [
+    {
+      "case_id": "tour_analysis_001",
+      "input": "Summarize Europe 72",
+      "expected_skill": "tour-analysis",
+      "expected_tools": ["find_tour"],
+      "expected_output": [
+        "tour_name",
+        "show_count",
+        "countries",
+        "summary"
+      ]
+    },
+    {
+      "case_id": "tour_analysis_002",
+      "input": "How many shows were played during Spring 1977?",
+      "expected_skill": "tour-analysis",
+      "expected_tools": ["find_tour"],
+      "expected_output": [
+        "tour_name",
+        "show_count"
+      ]
+    },
+    {
+      "case_id": "tour_analysis_003",
+      "input": "What were the defining songs of Europe 72?",
+      "expected_skill": "tour-analysis",
+      "expected_tools": ["find_tour"],
+      "expected_output": [
+        "tour_name",
+        "top_songs"
+      ]
+    }
+  ]
+}

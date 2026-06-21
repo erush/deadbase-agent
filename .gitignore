@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment Variables / Secrets
+.env
+.env.*
+*.env
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build Artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# Temporary Files
+*.tmp
+*.bak
+*.swp
+
+# Local Data Assets
+data/
+
+# Local Databases
+*.duckdb
+*.sqlite
+*.sqlite3
+
+# Generated Outputs
+exports/
+output/
+reports/
+screenshots/
+
+# Local Config
+config.local.*
+settings.local.*
+
+# OS Files
+Thumbs.db

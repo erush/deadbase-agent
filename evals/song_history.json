@@ -1,0 +1,40 @@
+{
+  "skill": "song-history",
+  "cases": [
+    {
+      "case_id": "song_history_001",
+      "input": "When was Dark Star last played before Cornell 1977?",
+      "expected_skill": "song-history",
+      "expected_tools": ["find_song"],
+      "expected_output": [
+        "song_name",
+        "last_performance_date",
+        "venue",
+        "location",
+        "historical_context"
+      ]
+    },
+    {
+      "case_id": "song_history_002",
+      "input": "When was the first performance of Scarlet Begonias?",
+      "expected_skill": "song-history",
+      "expected_tools": ["find_song"],
+      "expected_output": [
+        "song_name",
+        "first_performance_date",
+        "venue"
+      ]
+    },
+    {
+      "case_id": "song_history_003",
+      "input": "How often was Dark Star played in 1972?",
+      "expected_skill": "song-history",
+      "expected_tools": ["find_song"],
+      "expected_output": [
+        "song_name",
+        "performance_count",
+        "year"
+      ]
+    }
+  ]
+}

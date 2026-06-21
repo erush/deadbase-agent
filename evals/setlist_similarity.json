@@ -1,0 +1,37 @@
+{
+  "skill": "setlist-similarity",
+  "cases": [
+    {
+      "case_id": "setlist_similarity_001",
+      "input": "Find shows most similar to Cornell 1977",
+      "expected_skill": "setlist-similarity",
+      "expected_tools": ["compare_setlists"],
+      "expected_output": [
+        "show",
+        "similarity_score",
+        "shared_songs"
+      ]
+    },
+    {
+      "case_id": "setlist_similarity_002",
+      "input": "Compare Cornell 1977 and Veneta 1972",
+      "expected_skill": "setlist-similarity",
+      "expected_tools": ["compare_setlists"],
+      "expected_output": [
+        "show_a",
+        "show_b",
+        "similarity_score"
+      ]
+    },
+    {
+      "case_id": "setlist_similarity_003",
+      "input": "Which show has the most similar first set to Cornell 1977?",
+      "expected_skill": "setlist-similarity",
+      "expected_tools": ["compare_setlists"],
+      "expected_output": [
+        "show",
+        "similarity_score"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "skill": "show-lookup",
+  "cases": [
+    {
+      "case_id": "show_lookup_001",
+      "input": "What was played on 1977-05-08?",
+      "expected_skill": "show-lookup",
+      "expected_tools": ["find_show"],
+      "expected_output": [
+        "date",
+        "venue",
+        "location",
+        "setlist"
+      ]
+    },
+    {
+      "case_id": "show_lookup_002",
+      "input": "Show me the Veneta 1972 setlist",
+      "expected_skill": "show-lookup",
+      "expected_tools": ["find_show"],
+      "expected_output": [
+        "date",
+        "venue",
+        "setlist"
+      ]
+    },
+    {
+      "case_id": "show_lookup_003",
+      "input": "What songs were played during the second set on 1977-05-08?",
+      "expected_skill": "show-lookup",
+      "expected_tools": ["find_show"],
+      "expected_output": [
+        "date",
+        "set_number",
+        "songs"
+      ]
+    }
+  ]
+}

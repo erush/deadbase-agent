@@ -2,14 +2,20 @@
 
 ## Problem Definition
 
-Evidence:
+### Evidence
 
 - README.md
 - docs/kaggle_submission.md
 
-DeadBase defines a clear problem: archive tools are usually retrieval-based, while historical research requires explanation, comparison, and synthesis.
+### Demonstrated Capability
 
-Status:
+DeadBase addresses a clear research problem:
+
+Traditional archive systems focus on retrieval, while historical investigation requires explanation, comparison, interpretation, and synthesis.
+
+The project explores how agent-based systems can investigate cultural archives rather than simply search them.
+
+### Status
 
 Complete
 
@@ -17,7 +23,7 @@ Complete
 
 ## Agent Design
 
-Evidence:
+### Evidence
 
 - agents/song_agent.py
 - agents/song_evolution_agent.py
@@ -27,9 +33,13 @@ Evidence:
 - agents/research_agent.py
 - agents/synthesis_agent.py
 
-DeadBase uses specialized agents for different historical research tasks.
+### Demonstrated Capability
 
-Status:
+DeadBase uses specialized agents responsible for distinct historical research tasks.
+
+Each agent operates on a specific intelligence layer and contributes evidence to larger investigations.
+
+### Status
 
 Complete
 
@@ -37,22 +47,33 @@ Complete
 
 ## Agent Orchestration
 
-Evidence:
+### Evidence
 
 - agents/research_agent.py
 - scripts/cornell_investigation_demo.py
 
-The Research Agent combines venue analysis, song analysis, similarity analysis, historical ranking, archetypes, and synthesis into a single investigation.
+### Demonstrated Capability
 
-Status:
+The Research Agent coordinates multiple analytical perspectives:
+
+- historical rankings
+- venue intelligence
+- song intelligence
+- similarity analysis
+- archetype classification
+- synthesis generation
+
+The Cornell investigation demonstrates end-to-end orchestration across multiple agents.
+
+### Status
 
 Complete
 
 ---
 
-## Technical Execution
+## Analytics Engineering
 
-Evidence:
+### Evidence
 
 - analytics/build_song_profiles.py
 - analytics/build_song_evolution.py
@@ -64,31 +85,11 @@ Evidence:
 - analytics/build_show_archetypes.py
 - analytics/build_show_clusters.py
 
-DeadBase includes a complete analytics pipeline that transforms archive records into reusable intelligence layers.
+### Demonstrated Capability
 
-Status:
+DeadBase transforms archive records into reusable analytical datasets that support agent reasoning.
 
-Complete
-
----
-
-## Data Modeling
-
-Evidence:
-
-- DuckDB warehouse design
-- tools/
-- skill_executors/
-- analytics/
-
-Core modeled entities:
-
-- shows
-- performances
-- songs
-- venues
-
-Derived intelligence layers:
+Generated intelligence layers include:
 
 - song_profile
 - song_evolution
@@ -100,7 +101,36 @@ Derived intelligence layers:
 - show_archetypes
 - show_clusters
 
-Status:
+### Status
+
+Complete
+
+---
+
+## Data Modeling
+
+### Evidence
+
+- tools/
+- skill_executors/
+- analytics/
+
+### Demonstrated Capability
+
+The project models:
+
+- performances
+- songs
+- venues
+- repertoire relationships
+- historical significance
+- venue importance
+- song lifecycles
+- performance similarity
+
+These entities serve as the foundation for agent investigations.
+
+### Status
 
 Complete
 
@@ -108,24 +138,35 @@ Complete
 
 ## Demonstration
 
-Evidence:
+### Evidence
 
 - scripts/cornell_investigation_demo.py
 - scripts/test_research_agent.py
+- scripts/test_historian_agent.py
 - scripts/test_song_evolution_agent.py
-- docs/demo_script.md
+- scripts/test_show_recommender.py
+- docs/demo_output.md
 
-The Cornell 1977 investigation demonstrates the full multi-agent workflow.
+### Demonstrated Capability
 
-Status:
+DeadBase provides executable demonstrations showing:
+
+- historical investigation
+- agent orchestration
+- song evolution analysis
+- venue intelligence
+- similarity discovery
+- research synthesis
+
+### Status
 
 Complete
 
 ---
 
-## Evaluation Assets
+## Evaluation
 
-Evidence:
+### Evidence
 
 - evals/show_lookup.json
 - evals/song_history.json
@@ -134,9 +175,11 @@ Evidence:
 - evals/setlist_similarity.json
 - tests/
 
-DeadBase includes evaluation examples and test files for core skills.
+### Demonstrated Capability
 
-Status:
+Evaluation assets exist for core capabilities and provide examples for validating agent behavior and skill execution.
+
+### Status
 
 Complete
 
@@ -144,7 +187,7 @@ Complete
 
 ## Documentation
 
-Evidence:
+### Evidence
 
 - README.md
 - AGENTS.md
@@ -153,8 +196,13 @@ Evidence:
 - docs/deployment.md
 - docs/evaluation.md
 - docs/kaggle_submission.md
+- docs/demo_output.md
 
-Status:
+### Demonstrated Capability
+
+The repository includes architecture, deployment, evaluation, demonstration, and submission documentation.
+
+### Status
 
 Complete
 
@@ -162,54 +210,66 @@ Complete
 
 ## Reproducibility
 
-Evidence:
+### Evidence
 
 - requirements.txt
 - analytics/
 - scripts/
 - README.md
 
-The public repository includes code, setup requirements, build scripts, demo scripts, and documentation.
+### Demonstrated Capability
 
-Note:
+The repository includes source code, analytics pipelines, build scripts, demonstrations, and dependency definitions.
 
-The raw archive data and derived DuckDB warehouse are intentionally excluded from the public repository.
+### Status
 
-Status:
+Partial by Design
 
-Partial by design
+### Note
+
+The public repository intentionally excludes:
+
+- raw archive assets
+- processed archive assets
+- generated DuckDB warehouses
+
+The project publishes the intelligence framework while protecting the underlying archive dataset.
 
 ---
 
-## Privacy / Data Boundary
+## Repository Quality
 
-Evidence:
+### Evidence
 
-- .gitignore
-- data/ excluded
-- *.duckdb excluded
+- Public GitHub repository
+- Project documentation
+- Modular architecture
+- Agent separation
+- Analytics separation
 
-The repository publishes the intelligence system while protecting raw and derived archive assets.
+### Demonstrated Capability
 
-Status:
+The repository follows a layered architecture:
+
+Data → Analytics → Skills → Agents → Research Output
+
+### Status
 
 Complete
 
 ---
 
-## Overall Submission Readiness
+## Overall Assessment
 
-DeadBase currently includes:
+DeadBase demonstrates:
 
 - Clear problem definition
-- Analytics engineering pipeline
-- Multi-agent architecture
-- Historical research workflow
-- Cornell investigation demo
+- Analytics engineering
+- Multi-agent design
+- Agent orchestration
+- Historical investigation workflows
 - Evaluation assets
-- Documentation
-- Public GitHub repository
+- Reproducible demonstrations
+- Comprehensive documentation
 
-Status:
-
-Submission-ready pending final Kaggle form review
+The project is submission-ready pending final Kaggle submission review and presentation materials.

@@ -13,9 +13,11 @@ Traditional archive tools focus on retrieval:
 
 DeadBase explores a different question:
 
-Can analytical models and AI agents investigate historical performances and explain why they matter?
+Can analytics and AI agents investigate historical performances and explain why they matter?
 
 The project combines analytics engineering, feature generation, historical modeling, and agent orchestration to transform archive records into explainable historical investigations.
+
+Developed for the Kaggle Vibe Coding Agents Capstone, DeadBase demonstrates how specialized agents can collaborate to investigate a large cultural archive.
 
 ---
 
@@ -23,21 +25,21 @@ The project combines analytics engineering, feature generation, historical model
 
 The Grateful Dead archive contains:
 
-- 1,822 unique performances
+- 1,822 performances
 - 35,000+ song performances
-- 445 unique songs
+- 445 songs
 - 434 venues
 
-While the archive is rich with information, historical investigation remains difficult.
+The archive contains an enormous amount of information, but historical investigation remains difficult.
 
 Researchers often rely on:
 
-- Manual searches
-- Community reputation
-- Anecdotal evidence
-- Personal knowledge
+- manual searching
+- community reputation
+- anecdotal evidence
+- personal expertise
 
-Most archive tools answer:
+Most archive systems answer:
 
 "What happened?"
 
@@ -49,111 +51,132 @@ DeadBase attempts to answer:
 
 ## Solution
 
-DeadBase converts raw archive records into a layered intelligence system.
+DeadBase converts archive records into a layered intelligence system.
 
-Archive data is transformed into analytical models describing:
+Raw archive data is transformed into analytical models describing:
 
-- Song evolution
-- Venue history
-- Show structure
-- Historical significance
-- Similarity relationships
-- Performance archetypes
-- Performance clusters
+- song evolution
+- venue history
+- show structure
+- historical significance
+- similarity relationships
+- performance archetypes
+- performance clusters
 
-Specialized agents then use these analytical models to perform historical investigations.
+Specialized agents use these analytical models to investigate historical questions and generate explainable research outputs.
+
+---
+
+## Why Agents?
+
+Historical investigation rarely depends on a single signal.
+
+Understanding a performance requires combining:
+
+- venue context
+- repertoire context
+- historical rankings
+- song history
+- performance similarity
+- structural characteristics
+
+DeadBase uses specialized agents because each analytical domain requires different reasoning and evidence.
+
+The Research Agent coordinates these perspectives into a unified historical assessment.
 
 ---
 
 ## Architecture
 
+```text
 Archive Data
-
-→ DuckDB Warehouse
-
-→ Analytics Layer
-
-→ Skill Layer
-
-→ Agent Layer
-
-→ Research Synthesis
+    ↓
+DuckDB Warehouse
+    ↓
+Analytics Layer
+    ↓
+Skill Executors
+    ↓
+Agent Layer
+    ↓
+Research Synthesis
+```
 
 ---
 
 ## Analytics Layer
 
-The analytics layer transforms archive records into structured historical signals.
+DeadBase generates reusable intelligence layers from archive data.
 
-### Song Profiles
+### song_profile
 
 Captures:
 
-- Performance count
-- First appearance
-- Final appearance
-- Peak year
-- Active years
+- performance count
+- first appearance
+- final appearance
+- peak year
+- active years
 
-### Song Evolution
+### song_evolution
 
 Models song careers using:
 
-- Historical tiers
-- Career patterns
-- Longevity scores
-- Peak concentration
+- historical tiers
+- career patterns
+- longevity scores
+- peak concentration
 
-### Show DNA
+### show_dna
 
-Captures structural characteristics including:
+Captures:
 
-- Show length
-- Set count
-- Segue ratio
-- Repertoire structure
+- show length
+- set count
+- segue ratio
+- repertoire structure
 
-### Venue Profiles
+### venue_profile
 
-Models venue history using:
+Captures:
 
-- Show count
-- Active years
-- Average show length
-- Average segue ratio
+- show count
+- active years
+- average show length
+- average segue ratio
 
-### Venue Rankings
+### venue_rankings
 
 Ranks venues by:
 
-- Historical importance
-- Rarity
-- Archive footprint
+- historical importance
+- rarity
+- archive footprint
 
-### Show Embeddings
+### show_embeddings
 
 Transforms performances into analytical feature vectors.
 
 Features include:
 
-- Era
-- Show length
-- Set complexity
-- Segue behavior
-- Venue importance
-- Historical significance
+- era
+- show length
+- set complexity
+- segue behavior
+- venue importance
+- historical significance
 
-### Historical Significance Rankings
+### show_historical_significance
 
-Ranks every performance in the archive using measurable historical signals.
+Ranks every performance in the archive.
 
-Outputs include:
+Outputs:
 
-- Historian score
-- Historian rank
-- Historian percentile
+- historian score
+- historian rank
+- historian percentile
 
-### Show Archetypes
+### show_archetypes
 
 Classifies performances into categories such as:
 
@@ -163,95 +186,146 @@ Classifies performances into categories such as:
 - Rare Song Show
 - Complex Set Structure
 
-### Show Clusters
+### show_clusters
 
-Groups performances into families based on shared characteristics and historical patterns.
+Groups performances into broader historical families based on shared characteristics.
 
 ---
 
 ## Agent Architecture
 
-DeadBase uses specialized agents that investigate different aspects of the archive.
+DeadBase uses specialized agents responsible for distinct historical research tasks.
 
 ### Song Agent
 
-Provides historical context for songs including frequency, lifecycle, and repertoire evolution.
-
-### Venue Agent
-
-Investigates venue history, rarity, and historical significance.
-
-### Similarity Agent
-
-Identifies neighboring performances using repertoire overlap and analytical embeddings.
+Provides song-level archive intelligence.
 
 ### Song Evolution Agent
 
-Explains how songs changed throughout the band's history.
+Explains how songs evolved throughout the band's history.
+
+### Venue Agent
+
+Investigates venue history and significance.
+
+### Similarity Agent
+
+Identifies neighboring performances using repertoire overlap and analytical similarity.
 
 ### Historian Agent
 
-Evaluates performances using historical rankings, archetypes, and archive signals.
+Evaluates performances using rankings, archetypes, venue context, and historical signals.
 
 ### Research Agent
 
-Coordinates multiple agents and synthesizes findings into a unified historical investigation.
+Coordinates multiple agents and synthesizes findings into a single historical investigation.
 
-The Research Agent represents the primary intelligence layer of the system.
+### Synthesis Agent
+
+Transforms analytical findings into explainable historical narratives.
 
 ---
 
-## Cornell Investigation Example
+## Demonstration: Cornell 1977
 
-To demonstrate the system, I selected one of the most famous performances in Grateful Dead history:
+The primary demonstration investigates one of the most famous performances in Grateful Dead history:
 
 Cornell University — May 8, 1977.
 
-Rather than asking whether the show is famous, DeadBase asks why.
-
-The investigation combined:
+The investigation combines:
 
 - Historian Agent
 - Similarity Agent
 - Venue Agent
 - Song Agent
+- Research Agent
+- Synthesis Agent
 
-The Historian Agent determined that Cornell ranks in the 79th percentile of archive performances and belongs to the Complex Set Structure archetype.
+Key findings:
 
-The Similarity Agent identified several Spring 1977 performances with highly overlapping repertoires.
+- Cornell ranks in the 79th percentile of archive performances.
+- The performance belongs to the Complex Set Structure archetype.
+- Barton Hall hosted only three Grateful Dead performances.
+- Several Spring 1977 performances display highly similar repertoires.
+- The archive does not support the claim that Cornell's importance is driven solely by setlist uniqueness.
 
-The Venue Agent revealed that Barton Hall hosted only three Grateful Dead performances.
-
-The Song Agent examined the historical context of key repertoire selections including Estimated Prophet, Saint Stephen, Morning Dew, and Not Fade Away.
-
-The resulting synthesis suggested that Cornell's historical reputation is not fully explained by setlist uniqueness.
-
-Instead, the evidence points toward a combination of:
+The resulting synthesis suggests that Cornell's reputation emerges from a combination of:
 
 - Spring 1977 repertoire strength
-- Venue mythology
-- Tape circulation
-- Listener consensus
-- Performance quality
-- Long-term cultural memory
+- venue mythology
+- tape circulation
+- listener consensus
+- performance quality
+- long-term cultural memory
 
-This investigation demonstrates how analytical modeling and agent orchestration can be combined to produce explainable historical research.
+This investigation demonstrates how analytical modeling and agent orchestration can be combined to generate explainable historical research.
+
+---
+
+## Results
+
+DeadBase currently models:
+
+- 1,822 performances
+- 35,000+ song performances
+- 445 songs
+- 434 venues
+
+Generated intelligence layers include:
+
+- song_profile
+- song_evolution
+- show_dna
+- venue_profile
+- venue_rankings
+- show_embeddings
+- show_historical_significance
+- show_archetypes
+- show_clusters
+
+The system successfully performs:
+
+- historical investigations
+- venue intelligence
+- song evolution analysis
+- performance similarity discovery
+- research synthesis
+
+---
+
+## Repository Contents
+
+The public repository includes:
+
+- analytics pipelines
+- agent implementations
+- evaluation assets
+- demonstration scripts
+- architecture documentation
+- deployment documentation
+- Kaggle submission materials
+
+The repository intentionally excludes:
+
+- raw YAML archive assets
+- processed archive assets
+- generated DuckDB warehouses
 
 ---
 
 ## Lessons Learned
 
-The most important insight from this project was that analytics and agents become significantly more useful when combined.
+The most important lesson was that analytics and agents become significantly more useful when combined.
 
-Analytical models create structured historical signals.
+Analytics create structured historical signals.
 
-Agents provide investigation, interpretation, and synthesis.
+Agents provide interpretation, investigation, comparison, and synthesis.
 
 Together they enable explainable historical reasoning rather than simple retrieval.
 
-Another key lesson was the importance of separating measurable archive evidence from cultural reputation.
+Another important lesson was the distinction between cultural reputation and archive evidence.
 
-DeadBase intentionally distinguishes between what the data supports and what historical memory preserves.
+DeadBase intentionally separates what the archive supports from what historical memory preserves.
 
 ---
 
@@ -259,14 +333,14 @@ DeadBase intentionally distinguishes between what the data supports and what his
 
 Potential future extensions include:
 
-- Archive review intelligence
-- Fan sentiment modeling
-- Era transition detection
-- Tour-level intelligence
-- Community narrative extraction
-- Historical recommendation systems
-- Interactive research interfaces
-- Cross-domain applications to sports intelligence systems
+- Archive.org review intelligence
+- fan sentiment modeling
+- era transition detection
+- tour-level intelligence
+- community narrative extraction
+- historical recommendation systems
+- interactive research interfaces
+- cross-domain applications to sports intelligence systems
 
 ---
 

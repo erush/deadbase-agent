@@ -2,9 +2,9 @@
 
 ## Overview
 
-DeadBase is a multi-agent historical research system built on top of the Grateful Dead performance archive.
+DeadBase is a multi-agent historical intelligence platform built on top of the Grateful Dead performance archive.
 
-Traditional archive tools focus on search and retrieval:
+Traditional archive tools focus on retrieval:
 
 - Find a show
 - Find a song
@@ -13,7 +13,7 @@ Traditional archive tools focus on search and retrieval:
 
 DeadBase takes a different approach.
 
-The system attempts to discover historical structure inside the archive through analytical modeling and agent-based investigation.
+The system attempts to discover historical structure within the archive through analytics engineering, feature generation, and agent-based investigation.
 
 Rather than simply retrieving information, DeadBase attempts to answer questions such as:
 
@@ -22,6 +22,16 @@ Rather than simply retrieving information, DeadBase attempts to answer questions
 - Which songs defined an era?
 - How unique was a performance?
 - What explains the reputation of a legendary show?
+
+---
+
+## Kaggle AI Agents Capstone
+
+DeadBase was developed as a submission for the Kaggle Vibe Coding Agents Capstone.
+
+The project demonstrates how analytics engineering, feature generation, and multi-agent reasoning can be combined to investigate large historical archives.
+
+Rather than functioning as a traditional search tool, DeadBase uses specialized agents to perform explainable historical investigations.
 
 ---
 
@@ -34,7 +44,7 @@ The Grateful Dead archive contains:
 - 445 unique songs
 - 434 venues
 
-While the archive is rich with information, it remains difficult to investigate historically.
+While the archive is rich with information, historical investigation remains difficult.
 
 Researchers often rely on:
 
@@ -43,22 +53,67 @@ Researchers often rely on:
 - Anecdotal evidence
 - Personal knowledge
 
-DeadBase provides an analytical framework for investigating the archive using data-driven historical signals.
+Most archive tools answer:
+
+"What happened?"
+
+DeadBase attempts to answer:
+
+"Why did it matter?"
+
+---
+
+## Quick Start
+
+Run the primary demonstration:
+
+```bash
+python -m scripts.cornell_investigation_demo
+```
+
+This performs a complete multi-agent investigation of the Grateful Dead's legendary Cornell University performance on May 8, 1977.
+
+The investigation combines:
+
+- Historian Agent
+- Venue Agent
+- Song Agent
+- Similarity Agent
+- Research Agent
+- Synthesis Agent
+
+to generate an evidence-based historical assessment.
 
 ---
 
 ## Architecture
 
+```text
+Archive Data
+    ↓
+DuckDB Warehouse
+    ↓
+Analytics Layer
+    ↓
+Skill Executors
+    ↓
+Agent Layer
+    ↓
+Research Synthesis
+```
+
 ### Data Warehouse
 
 DuckDB powers the archive warehouse.
 
-Core tables:
+Core entities:
 
 - shows
 - performances
 - songs
 - venues
+
+The public repository intentionally excludes the raw archive data and generated DuckDB warehouse.
 
 ---
 
@@ -151,7 +206,7 @@ Produces:
 
 #### show_archetypes
 
-Classifies shows into historical categories.
+Classifies performances into historical categories.
 
 Examples:
 
@@ -161,29 +216,29 @@ Examples:
 - Rare Song Show
 - Complex Set Structure
 
+#### show_clusters
+
+Groups performances into broader analytical families using machine learning and shared historical characteristics.
+
 ---
 
 ## Agent Layer
 
 ### Similarity Agent
 
-Identifies neighboring shows based on repertoire overlap.
+Identifies neighboring performances based on repertoire overlap and analytical similarity.
 
 Example:
 
 "What shows are most similar to Cornell 1977?"
 
----
-
 ### Venue Agent
 
-Investigates venue history.
+Investigates venue history and historical significance.
 
 Example:
 
 "What role did Barton Hall play in Grateful Dead history?"
-
----
 
 ### Song Agent
 
@@ -193,8 +248,6 @@ Example:
 
 "When did Saint Stephen first appear?"
 
----
-
 ### Song Evolution Agent
 
 Models song lifecycles across the archive.
@@ -203,8 +256,6 @@ Example:
 
 "How did Dark Star evolve across the band's career?"
 
----
-
 ### Historian Agent
 
 Combines multiple analytical signals into a historical profile.
@@ -212,8 +263,6 @@ Combines multiple analytical signals into a historical profile.
 Example:
 
 "Why was Cornell 1977 important?"
-
----
 
 ### Research Agent
 
@@ -225,6 +274,8 @@ Combines:
 - venue intelligence
 - song intelligence
 - similarity analysis
+- analytical rankings
+- research synthesis
 
 to generate evidence-based historical narratives.
 
@@ -244,7 +295,7 @@ DeadBase investigated Cornell using:
 
 Findings:
 
-- Cornell ranks in the 79th percentile of archive shows.
+- Cornell ranks in the 79th percentile of archive performances.
 - The show belongs to the Complex Set Structure archetype.
 - Barton Hall hosted only three Grateful Dead performances.
 - Several Spring 1977 shows display highly similar repertoire.
@@ -261,6 +312,61 @@ DeadBase suggests that Cornell's reputation emerges from a combination of:
 
 ---
 
+## Results
+
+DeadBase currently models:
+
+- 1,822 performances
+- 35,000+ song performances
+- 445 songs
+- 434 venues
+
+Generated analytical datasets include:
+
+- song_profile
+- song_evolution
+- show_dna
+- venue_profile
+- venue_rankings
+- show_embeddings
+- show_historical_significance
+- show_archetypes
+- show_clusters
+
+The platform successfully performs multi-agent investigations that combine historical rankings, venue intelligence, repertoire analysis, archetype classification, and similarity modeling into explainable research outputs.
+
+---
+
+## Repository Structure
+
+```text
+agents/            Specialized research agents
+analytics/         Analytics builders and feature generation
+docs/              Documentation and submission materials
+evals/             Evaluation datasets
+mcp_server/        MCP server implementation
+scripts/           Demos and test scripts
+skill_executors/   Skill execution layer
+skills/            Skill definitions
+specs/             Project specifications
+tests/             Test suite
+tools/             Archive query tools
+```
+
+---
+
+## Data Boundary
+
+The public repository intentionally excludes:
+
+- raw YAML archive files
+- processed archive assets
+- DuckDB warehouse files
+
+The repository publishes the analytics and agent framework while protecting the underlying archive assets.
+
+---
+
 ## Key Insight
 
 DeadBase separates:
@@ -268,8 +374,6 @@ DeadBase separates:
 ### Cultural Reputation
 
 What fans believe is historically important.
-
-from
 
 ### Archive Evidence
 
@@ -288,11 +392,12 @@ Potential future research directions include:
 - Tape circulation intelligence
 - Era transition detection
 - Song sequence modeling
-- Show clustering
+- Advanced clustering
 - Venue lineage analysis
 - Community narrative extraction
 - Historical recommendation systems
-- Agentic archive exploration
+- Interactive research interfaces
+- Cross-domain applications to sports intelligence systems
 
 ---
 
@@ -304,13 +409,27 @@ Potential future research directions include:
 - Scikit-Learn
 - Multi-Agent Architecture
 - Historical Analytics
-- Grateful Dead Archive Data
+- Agent Orchestration
+- Research Synthesis
+
+---
+
+## Documentation
+
+Additional project documentation:
+
+- docs/architecture.md
+- docs/demo_script.md
+- docs/deployment.md
+- docs/evaluation.md
+- docs/kaggle_submission.md
+- docs/rubric_checklist.md
 
 ---
 
 ## Conclusion
 
-DeadBase demonstrates how analytical modeling and agent-based reasoning can transform a large cultural archive into an explorable historical intelligence system.
+DeadBase demonstrates how analytics engineering and agent-based reasoning can transform a large cultural archive into an explorable historical intelligence system.
 
 Instead of asking:
 

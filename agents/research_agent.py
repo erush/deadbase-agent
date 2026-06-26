@@ -260,6 +260,13 @@ Synthesis
                     ]
                 ),
 
+            "historian_score":
+                float(
+                    show[
+                        "historian_score"
+                    ]
+                ),
+
             "primary_archetype":
                 show[
                     "primary_archetype"

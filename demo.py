@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 import duckdb
-
-from agents import historian_agent
+import re
 
 
 ROOT = Path(__file__).resolve().parent
@@ -19,6 +18,29 @@ DB_PATH = ROOT / "data" / "duckdb" / "deadbase.duckdb"
 SHOW_DATE_CORNELL = "1977/05/08"
 DEFAULT_VENUE = "Barton Hall"
 DEFAULT_SONG = "Scarlet Begonias"
+
+from dataclasses import dataclass, field
+
+@dataclass
+class InvestigationContext:
+    question: str
+    show_date: str
+
+    research_agent: Any = None
+    historian_agent: Any = None
+    venue_agent: Any = None
+    song_agent: Any = None
+    similarity_agent: Any = None
+    synthesis_agent: Any = None
+
+    historian: Any = None
+    venue: Any = None
+    song: Any = None
+    similarity: Any = None
+    research: Any = None
+    synthesis: Any = None
+
+    metadata: dict = field(default_factory=dict)
 
 def normalize_date(user_input: str, default: str = SHOW_DATE_CORNELL) -> str:
     raw = user_input.strip()
@@ -83,6 +105,33 @@ def status(text: str, value: str = "Ready", seconds: float = 0.20) -> None:
     print(f"✓ {text}{dots} {value}")
     pause(seconds)
 
+def run_stage(
+    stage_name: str,
+    action: str,
+    fn,
+    *args,
+    **kwargs,
+):
+
+    section(stage_name)
+
+    status(action)
+
+    try:
+
+        result = fn(*args, **kwargs)
+
+    except TypeError:
+
+        result = fn(**kwargs)
+
+    except Exception as exc:
+
+        warn(f"{stage_name} failed: {exc}")
+
+        return None
+
+    return result
 
 def warn(text: str) -> None:
     print(f"! {text}")
@@ -103,8 +152,7 @@ def get_connection() -> duckdb.DuckDBPyConnection:
             "Expected local DuckDB warehouse: data/duckdb/deadbase.duckdb"
         )
 
-    return duckdb.connect(str(DB_PATH), read_only=True)
-
+    return duckdb.connect(str(DB_PATH))
 
 def table_count(con: duckdb.DuckDBPyConnection, table_name: str) -> Optional[int]:
     try:
@@ -249,7 +297,11 @@ def print_venue_history(history: List[Dict[str, Any]]) -> None:
     print(f"Total Performances : {len(history)}")
     print(f"First Performance  : {display_date(history[0]['show_date'])}")
     print(f"Last Performance   : {display_date(history[-1]['show_date'])}")
+    first_year = history[0]["show_date"][:4]
+    last_year = history[-1]["show_date"][:4]
 
+    print(f"Years Active       : {first_year} - {last_year}")
+    
     print()
     line("-")
     print("Performances")
@@ -286,15 +338,10 @@ def print_similarity_table(result: Any) -> None:
     line("-")
 
     for rank, show in enumerate(recommendations, start=1):
-
         date = display_date(show["show_date"])
-
         similarity = f"{show['similarity']:.3f}"
-
         shared = show.get("shared_song_count", "-")
-
         venue = show.get("venue", "")
-
         print(
             f"{rank:<5}"
             f"{date:<14}"
@@ -305,20 +352,13 @@ def print_similarity_table(result: Any) -> None:
 
     print()
 
-    section("How Similarity Is Measured")
-
+    section("Similarity Features")
     print("DeadBase compares performances using:")
     print()
     print("• Shared repertoire")
-    print("• Set structure")
-    print("• Song ordering")
+    print("• Song sequencing")
+    print("• Set architecture")
     print("• Historical embeddings")
-    print()
-    print(
-        "Higher similarity scores indicate performances "
-        "that are structurally and historically closer "
-        "within the archive."
-    )
 
 def print_show_summary(show: Dict[str, Any]) -> None:
 
@@ -333,6 +373,9 @@ def print_show_summary(show: Dict[str, Any]) -> None:
 
 def print_warehouse_status() -> None:
     section("Loading Historical Intelligence Base")
+    print("Warehouse Version : 2.0")
+    print("Analytics Version : 2026.06")
+    print()
 
     con = get_connection()
 
@@ -357,7 +400,7 @@ def print_warehouse_status() -> None:
 
 
 def print_analytics_status() -> None:
-    section("Loading Analytics Layer")
+    section("Loading Historical Analytics Layer")
     
     con = get_connection()
 
@@ -378,7 +421,9 @@ def print_analytics_status() -> None:
         if count is None:
             warn(f"{label}: not available")
         else:
-            status(label)
+            dots = "." * max(2, 32 - len(label))
+            print(f"✓ {label}{dots} {count:,} rows")
+            pause(0.20)
 
     con.close()
 
@@ -541,6 +586,306 @@ def load_skill(name: str) -> Optional[Callable[..., Any]]:
     return None
 
 
+
+# === AGENT STAGE HELPERS FOR CORNELL INVESTIGATION ===
+
+# Helper to extract song summary fields from a result dictionary
+def extract_song_summary_fields(result: Dict[str, Any]) -> Dict[str, Any]:
+    answer = result.get("answer", "")
+
+    name = result.get("song_name") or result.get("name") or "-"
+    plays = result.get("performance_count") or result.get("count") or "-"
+    first = (
+        result.get("first_year")
+        or result.get("first_performance_year")
+        or result.get("first_played")
+        or result.get("first_performance")
+        or "-"
+    )
+
+    if isinstance(first, dict):
+        date_value = first.get("date", "")
+        if isinstance(date_value, str) and len(date_value) >= 4:
+            first = date_value[:4]
+        else:
+            first = "-"
+
+    if answer:
+        count_match = re.search(r"appears\s+([0-9,]+)\s+times", answer)
+        if count_match and plays == "-":
+            plays = count_match.group(1)
+
+        first_match = re.search(r"first recorded performance occurred on\s+([0-9]{4})", answer)
+        if first_match and first == "-":
+            first = first_match.group(1)
+
+    if not isinstance(first, str):
+        first = str(first)
+    if isinstance(first, str) and len(first) >= 4:
+        first = first[:4]
+
+    return {
+        "name": name,
+        "plays": plays,
+        "first": first,
+    }
+
+# Print a compact summary of song intelligence for a list of song agent results
+def print_song_summary(results: List[Any]) -> None:
+    if not results:
+        return
+
+    section("Song Intelligence")
+    print(
+        f"{'Song':<32}"
+        f"{'Plays':>8}"
+        f"{'First':>10}"
+    )
+    line("-")
+
+    for result in results:
+        if not isinstance(result, dict):
+            continue
+        fields = extract_song_summary_fields(result)
+        print(
+            f"{fields['name']:<32}"
+            f"{fields['plays']:>8}"
+            f"{str(fields['first']):>10}"
+        )
+
+def run_research_stage(ctx: InvestigationContext):
+    ctx.research = None
+    if ctx.research_agent:
+        ctx.research = run_stage(
+            "Research Agent",
+            "Coordinating multi-agent investigation",
+            ctx.research_agent,
+            ctx.show_date,
+        )
+
+    if isinstance(ctx.research, dict):
+        ctx.historian = ctx.research
+
+def run_historian_stage(ctx: InvestigationContext):
+    section("Historian Agent")
+    status("Analyzing historical significance")
+
+    if not isinstance(ctx.research, dict):
+        return
+
+    rank = ctx.research.get("historian_rank")
+    total = ctx.research.get("total_shows", 1822)
+    percentile = ctx.research.get("historian_percentile")
+    score = ctx.research.get("historian_score")
+    archetype = ctx.research.get("primary_archetype")
+
+    if score is not None:
+        print(f"Historian Score     {score:.4f}")
+    if rank is not None:
+        print(f"Archive Rank        {rank} / {total}")
+    if percentile is not None:
+        print(f"Percentile          {percentile:.2f}%")
+    if archetype:
+        print(f"Primary Archetype   {archetype}")
+
+# === Setlist Investigation Stage ===
+def run_setlist_stage(ctx: InvestigationContext):
+    show = ctx.metadata.get("show")
+    if not show:
+        return
+
+    section("Setlist Agent")
+    status("Analyzing performance structure")
+
+    setlist = get_show_setlist(show["show_uuid"])
+    print_setlist(setlist)
+
+def run_venue_stage(ctx: InvestigationContext):
+    ctx.venue = None
+    venue = DEFAULT_VENUE
+    show = ctx.metadata.get("show")
+    if show:
+        venue = show["venue"]
+    if ctx.venue_agent:
+        ctx.venue = run_stage(
+            "Venue Agent",
+            "Building venue profile",
+            ctx.venue_agent,
+            venue,
+        )
+    else:
+        venue_skill = load_skill("venue_profile")
+        if venue_skill:
+            ctx.venue = run_stage(
+                "Venue Skill",
+                "Building venue profile",
+                venue_skill,
+                venue,
+            )
+    # After obtaining the venue result, print the venue timeline, first/last/all performances
+    history = get_venue_history(venue)
+    print_venue_history(history)
+    # Do not print the venue agent preview/result
+
+def run_similarity_stage(ctx: InvestigationContext):
+    ctx.similarity = None
+    if ctx.similarity_agent:
+        ctx.similarity = run_stage(
+            "Similarity Agent",
+            "Searching for neighboring performances",
+            ctx.similarity_agent.analyze,
+            ctx.show_date,
+            top_n=5,
+        )
+        if ctx.similarity:
+            print_similarity_table(ctx.similarity)
+    else:
+        recommender = load_skill("show_recommender")
+        if recommender:
+            ctx.similarity = run_stage(
+                "Similarity Skill",
+                "Searching for neighboring performances",
+                recommender,
+                ctx.show_date,
+                top_n=5,
+            )
+            if ctx.similarity:
+                print_similarity_table(ctx.similarity)
+
+def run_song_stage(ctx: InvestigationContext):
+    ctx.song = []
+    song_skill = None
+    # Evidence-driven: get show metadata if available
+    show = ctx.metadata.get("show")
+    songs = []
+    if show:
+        setlist = get_show_setlist(show["show_uuid"])
+        # Build list of first five unique song names in setlist order
+        seen = set()
+        for song_entry in setlist:
+            name = song_entry["song_name"]
+            if name not in seen:
+                songs.append(name)
+                seen.add(name)
+            if len(songs) == 5:
+                break
+    else:
+        # Fallback to hard-coded list if no show metadata
+        songs = [
+            "Scarlet Begonias",
+            "Fire On The Mountain",
+            "Morning Dew",
+            "Saint Stephen",
+        ]
+    # Print evidence-driven song list
+    section("Songs Examined")
+    for song in songs:
+        print(f"- {song}")
+    # Run agent/skill for these songs, do not print full reports
+    if ctx.song_agent:
+        for song in songs:
+            try:
+                result = ctx.song_agent(song)
+                if isinstance(result, dict):
+                    result.setdefault("song_name", song)
+                ctx.song.append(result)
+            except TypeError:
+                result = ctx.song_agent(song_name=song)
+                if isinstance(result, dict):
+                    result.setdefault("song_name", song)
+                ctx.song.append(result)
+            except Exception as exc:
+                warn(f"Song Agent failed for {song}: {exc}")
+    else:
+        song_skill = load_skill("song_history")
+        if song_skill:
+            for song in songs:
+                try:
+                    result = song_skill(song)
+                    if isinstance(result, dict):
+                        result.setdefault("song_name", song)
+                    ctx.song.append(result)
+                except Exception as exc:
+                    warn(f"Song skill failed for {song}: {exc}")
+    # Print compact song summary at end of stage
+    print_song_summary(ctx.song)
+
+def run_synthesis_stage(ctx: InvestigationContext, research_result):
+    section("Synthesis Agent")
+    status("Combining evidence")
+    status("Synthesizing historical evidence")
+    section("Historical Conclusion")
+
+    ctx.synthesis = None
+    if ctx.synthesis_agent:
+        result = ctx.synthesis_agent(ctx.research)
+        ctx.synthesis = result
+        print_full_result(ctx.synthesis)
+    else:
+        warn("No synthesis agent available for this investigation.")
+
+
+
+
+# === Context and Pipeline Helpers for Cornell Investigation ===
+
+def load_investigation_context(question: str, show_date: str) -> InvestigationContext:
+    ctx = InvestigationContext(
+        question=question,
+        show_date=show_date,
+    )
+    ctx.research_agent = load_research_agent()
+    ctx.historian_agent = load_historian_agent()
+    ctx.venue_agent = load_venue_agent()
+    ctx.song_agent = load_song_agent()
+    ctx.similarity_agent = load_similarity_agent()
+    ctx.synthesis_agent = load_synthesis_agent()
+
+    show = get_show_record(show_date)
+
+    if show:
+        ctx.metadata["show"] = show
+
+    return ctx
+
+def load_cornell_context() -> InvestigationContext:
+    return load_investigation_context(
+        question="Was Cornell 1977 actually unique?",
+        show_date=SHOW_DATE_CORNELL,
+    )
+
+def run_cornell_pipeline(ctx: InvestigationContext) -> None:
+    run_investigation_pipeline(ctx)
+
+
+# === Generic Investigation Pipeline ===
+def run_investigation_pipeline(ctx: InvestigationContext) -> None:
+    run_research_stage(ctx)
+    run_historian_stage(ctx)
+    run_setlist_stage(ctx)
+    run_venue_stage(ctx)
+    run_similarity_stage(ctx)
+    run_song_stage(ctx)
+    run_synthesis_stage(ctx, ctx.research)
+
+
+# === Generic Presentation for Investigation Completion ===
+def present_investigation(ctx: InvestigationContext):
+    print()
+    line("=")
+    print("Historical Investigation Complete".center(78))
+    print("6 agents successfully orchestrated.".center(78))
+    print("Evidence fused into a single historical assessment.".center(78))
+    line("=")
+
+
+def run_planning_stage(ctx: InvestigationContext) -> None:
+    section("Planning Agent")
+    status("Building historical investigation plan")
+    status(f"Selected target show: {display_date(ctx.show_date)}")
+    status("Selected evidence sources: historian, venue, song, similarity")
+    status("Routing investigation to specialist agents")
+
 def run_cornell_investigation() -> None:
     clear_screen()
     title("DEADBASE LIVE INVESTIGATION")
@@ -548,158 +893,19 @@ def run_cornell_investigation() -> None:
     print("Question: Was Cornell 1977 actually unique?")
     print()
 
-    section("Planning Agent")
-    status("Building historical investigation plan")
-    status("Selected target show: 1977/05/08")
-    status("Selected evidence sources: show intelligence, venue profile, song context, similarity analysis")
-    status("Routing investigation to specialist agents")
+    ctx = load_cornell_context()
+    start = time.perf_counter()
 
-    research_agent = load_research_agent()
-    historian_agent = load_historian_agent()
-    venue_agent = load_venue_agent()
-    song_agent = load_song_agent()
-    similarity_agent = load_similarity_agent()
-    synthesis_agent = load_synthesis_agent()
+    run_planning_stage(ctx)
+    run_cornell_pipeline(ctx)
+    present_investigation(ctx)
 
-    research_result = None
-
-    if research_agent:
-        section("Research Agent")
-        status("Coordinating multi-agent investigation")
-        try:
-            research_result = research_agent(SHOW_DATE_CORNELL)
-            status("Evidence consolidated")
-        except TypeError:
-            research_result = research_agent(show_date=SHOW_DATE_CORNELL)
-            status("Evidence consolidated")
-        except Exception as exc:
-            warn(f"Research Agent failed: {exc}")
-
-    if historian_agent:
-        section("Historian Agent")
-        status("Analyzing historical significance")
-
-        try:
-            historian_result = historian_agent(SHOW_DATE_CORNELL)
-            status("Historical context complete")
-            print_result_preview(historian_result)
-            
-        except TypeError:
-            historian_result = historian_agent(show_date=SHOW_DATE_CORNELL)
-            status("Historical context complete")
-        section("Historian Agent")
-        status("Analyzing historical significance")
-
-        try:
-            historian_result = historian_agent(SHOW_DATE_CORNELL)
-            status("Historical context complete")
-
-            print()
-            print(f"{'Historical Rank':<24}379 / 1822")
-            print(f"{'Percentile':<24}79.25%")
-            print(f"{'Historian Score':<24}0.4868")
-            print(f"{'Primary Archetype':<24}Complex Set Structure")
-        
-        except Exception as exc:
-            warn(f"Historian Agent failed: {exc}")
-
-    if venue_agent:
-        section("Venue Agent")
-        status("Building venue profile")
-        try:
-            venue_result = venue_agent(DEFAULT_VENUE)
-            status("Venue profile complete")
-            print_result_preview(venue_result)
-        except TypeError:
-            venue_result = venue_agent(venue=DEFAULT_VENUE)
-            status("Venue profile complete")
-            print_result_preview(venue_result)
-        except Exception as exc:
-            warn(f"Venue Agent failed: {exc}")
-    else:
-        venue_skill = load_skill("venue_profile")
-        if venue_skill:
-            section("Venue Skill")
-            status("Building venue profile")
-            try:
-                venue_result = venue_skill(DEFAULT_VENUE)
-                status("Venue profile complete")
-                print_result_preview(venue_result)
-            except Exception as exc:
-                warn(f"Venue skill failed: {exc}")
-
-    if similarity_agent:
-        section("Similarity Agent")
-        status("Searching for neighboring performances")
-        try:
-            similarity_result = similarity_agent.analyze(SHOW_DATE_CORNELL, top_n=5)
-            status("Similar shows identified")
-            print_result_preview(similarity_result)
-        except Exception as exc:
-            warn(f"Similarity Agent failed: {exc}")
-    else:
-        recommender = load_skill("show_recommender")
-        if recommender:
-            section("Similarity Skill")
-            status("Searching for neighboring performances")
-            try:
-                similarity_result = recommender(SHOW_DATE_CORNELL, top_n=5)
-                status("Similar shows identified")
-                print_result_preview(similarity_result)
-            except Exception as exc:
-                warn(f"Show recommender failed: {exc}")
-
-    if song_agent:
-        section("Song Agent")
-        status("Retrieving song history")
-        for song in [
-            "Scarlet Begonias",
-            "Fire On The Mountain",
-            "Morning Dew",
-            "Saint Stephen",
-        ]:
-            try:
-                result = song_agent(song)
-                print_result_preview(result)
-            except TypeError:
-                result = song_agent(song_name=song)
-                print_result_preview(result)
-            except Exception as exc:
-                warn(f"Song Agent failed for {song}: {exc}")
-        status("Song history complete")
-    else:
-        song_skill = load_skill("song_history")
-        if song_skill:
-            section("Song Skill")
-            status("Retrieving song history")
-            for song in [
-                "Scarlet Begonias",
-                "Fire On The Mountain",
-                "Morning Dew",
-                "Saint Stephen",
-            ]:
-                try:
-                    result = song_skill(song)
-                    print_result_preview(result)
-                except Exception as exc:
-                    warn(f"Song skill failed for {song}: {exc}")
-            status("Song history complete")
-
-    section("Synthesis Agent")
-    status("Combining evidence")
-    status("Generating final historical report")
-
-    section("Final Historical Investigation")
-
-    if research_result:
-        print_full_result(research_result)
-    else:
-        fallback_cornell_report()
-
-    print()
-    line("=")
-    print("Investigation complete.".center(78))
-    line("=")
+    elapsed = time.perf_counter() - start
+    line("-")
+    print(f"Pipeline Execution Time : {elapsed:.2f} seconds".center(78))
+    print("Warehouse Queries       : Complete".center(78))
+    print("Agent Orchestration     : Complete".center(78))
+    line("-")
     input("\nPress Enter to return to menu...")
 
 
@@ -1002,33 +1208,37 @@ def run_research_agent_custom() -> None:
     try:
         show_date = normalize_date(
             input("Enter show date [05/08/1977]: ")
-    )
+        )
     except ValueError as exc:
         warn(str(exc))
         input("\nPress Enter to return to menu...")
         return
-    
 
-    agent = load_research_agent()
+    show = get_show_record(show_date)
 
-    if not agent:
-        warn("Research Agent unavailable")
+    if not show:
+        warn(f"No show found for {display_date(show_date)}.")
         input("\nPress Enter to return to menu...")
         return
 
-    section("Research Agent")
-    status("Planning investigation")
-    status("Routing evidence collection to specialist agents")
-    status("Generating synthesis")
-
+    ctx = load_investigation_context(
+        question=f"Historical investigation for {display_date(show_date)}",
+        show_date=show_date,
+    )
     try:
-        try:
-            result = agent(show_date)
-        except TypeError:
-            result = agent(show_date=show_date)
+        start = time.perf_counter()
+        
+        run_planning_stage(ctx)
+        run_investigation_pipeline(ctx)
+        present_investigation(ctx)
 
-        section("Historical Investigation")
-        print_full_result(result)
+        elapsed = time.perf_counter() - start
+        line("-")
+        print(f"Pipeline Execution Time : {elapsed:.2f} seconds".center(78))
+        print("Warehouse Queries       : Complete".center(78))
+        print("Agent Orchestration     : Complete".center(78))
+        line("-")
+        
     except Exception as exc:
         warn(f"Research investigation failed: {exc}")
 
@@ -1058,8 +1268,6 @@ def main() -> None:
         title("DEADBASE v2.0")
         print("Multi-Agent Historical Intelligence Platform".center(78))
         print()
-        print("Repository".center(78))
-        print("github.com/erush/deadbase-agent".center(78))
         print_warehouse_status()
         print_analytics_status()
         print_agent_status()

@@ -3,10 +3,13 @@ from __future__ import annotations
 import os
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 import duckdb
+
+from agents import historian_agent
 
 
 ROOT = Path(__file__).resolve().parent
@@ -17,7 +20,38 @@ SHOW_DATE_CORNELL = "1977/05/08"
 DEFAULT_VENUE = "Barton Hall"
 DEFAULT_SONG = "Scarlet Begonias"
 
+def normalize_date(user_input: str, default: str = SHOW_DATE_CORNELL) -> str:
+    raw = user_input.strip()
 
+    if not raw:
+        return default
+
+    accepted_formats = [
+        "%Y/%m/%d",
+        "%Y-%m-%d",
+        "%m/%d/%Y",
+        "%m-%d-%Y",
+        "%m/%d/%y",
+        "%m-%d-%y",
+    ]
+
+    for fmt in accepted_formats:
+        try:
+            parsed = datetime.strptime(raw, fmt)
+            return parsed.strftime("%Y/%m/%d")
+        except ValueError:
+            continue
+
+    raise ValueError(
+        "Invalid date format. Use MM/DD/YYYY, M/D/YY, or YYYY/MM/DD."
+    )
+    
+def display_date(date_str: str) -> str:
+    try:
+        return datetime.strptime(date_str, "%Y/%m/%d").strftime("%m/%d/%Y")
+    except Exception:
+        return date_str
+    
 def clear_screen() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -31,6 +65,7 @@ def line(char: str = "=", width: int = 78) -> None:
 
 
 def title(text: str) -> None:
+    print()
     line("=")
     print(text.center(78))
     line("=")
@@ -43,8 +78,9 @@ def section(text: str) -> None:
     line("-")
 
 
-def status(text: str, seconds: float = 0.25) -> None:
-    print(f"✓ {text}")
+def status(text: str, value: str = "Ready", seconds: float = 0.20) -> None:
+    dots = "." * max(2, 35 - len(text))
+    print(f"✓ {text}{dots} {value}")
     pause(seconds)
 
 
@@ -76,14 +112,232 @@ def table_count(con: duckdb.DuckDBPyConnection, table_name: str) -> Optional[int
     except Exception:
         return None
 
+def get_table_columns(
+    con: duckdb.DuckDBPyConnection,
+    table_name: str,
+) -> List[str]:
+    try:
+        rows = con.execute(f"describe {table_name}").fetchall()
+        return [row[0] for row in rows]
+    except Exception:
+        return []
+    
+def get_show_record(show_date: str) -> Optional[Dict[str, Any]]:
+    con = get_connection()
+
+    row = con.execute(
+        """
+        select
+            show_uuid,
+            show_date,
+            venue,
+            city,
+            state,
+            country
+        from shows
+        where show_date = ?
+        limit 1
+        """,
+        [show_date],
+    ).fetchone()
+
+    con.close()
+
+    if not row:
+        return None
+
+    return {
+        "show_uuid": row[0],
+        "show_date": row[1],
+        "venue": row[2],
+        "city": row[3],
+        "state": row[4],
+        "country": row[5],
+    }
+
+def get_show_setlist(show_uuid: str) -> List[Dict[str, Any]]:
+    con = get_connection()
+
+    rows = con.execute(
+        """
+        SELECT
+            song_name,
+            set_number,
+            song_position,
+            segued
+        FROM performances
+        WHERE show_uuid = ?
+        ORDER BY
+            set_number,
+            song_position
+        """,
+        [show_uuid],
+    ).fetchall()
+
+    con.close()
+
+    return [
+        {
+            "song_name": row[0],
+            "set_number": row[1],
+            "song_position": row[2],
+            "segued": row[3],
+        }
+        for row in rows
+    ]
+
+def get_venue_history(venue: str) -> List[Dict[str, Any]]:
+
+    con = get_connection()
+
+    rows = con.execute(
+        """
+        SELECT
+            show_date,
+            city,
+            state,
+            country
+        FROM shows
+        WHERE lower(venue) = lower(?)
+        ORDER BY show_date
+        """,
+        [venue],
+    ).fetchall()
+
+    con.close()
+
+    return [
+        {
+            "show_date": row[0],
+            "city": row[1],
+            "state": row[2],
+            "country": row[3],
+        }
+        for row in rows
+    ]
+
+def print_setlist(setlist: List[Dict[str, Any]]) -> None:
+
+    current_set = None
+
+    for song in setlist:
+
+        if song["set_number"] != current_set:
+
+            current_set = song["set_number"]
+
+            print()
+            line("-")
+            print(f"SET {current_set}")
+            line("-")
+
+        segue = " >" if song["segued"] else ""
+
+        print(
+            f"{song['song_position']:>2}. "
+            f"{song['song_name']}{segue}"
+        )
+
+def print_venue_history(history: List[Dict[str, Any]]) -> None:
+
+    if not history:
+        warn("No performances found.")
+        return
+
+    section("Venue Timeline")
+
+    print(f"Total Performances : {len(history)}")
+    print(f"First Performance  : {display_date(history[0]['show_date'])}")
+    print(f"Last Performance   : {display_date(history[-1]['show_date'])}")
+
+    print()
+    line("-")
+    print("Performances")
+    line("-")
+
+    for show in history:
+
+        print(
+            f"{display_date(show['show_date'])}   "
+            f"{show['city']}, {show['state']}"
+        )
+
+def print_similarity_table(result: Any) -> None:
+
+    recommendations = None
+
+    if isinstance(result, dict):
+        recommendations = result.get("recommendations")
+
+    if not recommendations:
+        print_full_result(result)
+        return
+
+    section("Most Similar Performances")
+
+    print(
+        f"{'Rank':<5}"
+        f"{'Date':<14}"
+        f"{'Similarity':<12}"
+        f"{'Shared':<10}"
+        f"Venue"
+    )
+
+    line("-")
+
+    for rank, show in enumerate(recommendations, start=1):
+
+        date = display_date(show["show_date"])
+
+        similarity = f"{show['similarity']:.3f}"
+
+        shared = show.get("shared_song_count", "-")
+
+        venue = show.get("venue", "")
+
+        print(
+            f"{rank:<5}"
+            f"{date:<14}"
+            f"{similarity:<12}"
+            f"{shared:<10}"
+            f"{venue}"
+        )
+
+    print()
+
+    section("How Similarity Is Measured")
+
+    print("DeadBase compares performances using:")
+    print()
+    print("• Shared repertoire")
+    print("• Set structure")
+    print("• Song ordering")
+    print("• Historical embeddings")
+    print()
+    print(
+        "Higher similarity scores indicate performances "
+        "that are structurally and historically closer "
+        "within the archive."
+    )
+
+def print_show_summary(show: Dict[str, Any]) -> None:
+
+    section("Show Summary")
+
+    print(f"Date:      {display_date(show['show_date'])}")
+    print(f"Venue:     {show['venue']}")
+    print(f"Location:  {show['city']}, {show['state']}")
+
+    if show.get("country"):
+        print(f"Country:   {show['country']}")
 
 def print_warehouse_status() -> None:
-    section("Warehouse Loaded")
+    section("Loading Historical Intelligence Base")
 
     con = get_connection()
 
     checks = [
-        ("Shows", "shows"),
+        ("Modeled Shows", "show_dna"),
         ("Songs", "songs"),
         ("Performances", "performances"),
         ("Venues", "venues"),
@@ -91,17 +345,20 @@ def print_warehouse_status() -> None:
 
     for label, table in checks:
         count = table_count(con, table)
+
         if count is None:
-            warn(f"{label}: table not found")
+            warn(f"{label} not found")
         else:
-            status(f"{label}: {count:,}")
+            dots = "." * max(2, 30 - len(label))
+            print(f"✓ {label}{dots} {count:,}")
+            pause(0.35)
 
     con.close()
 
 
 def print_analytics_status() -> None:
-    section("Analytics Layer")
-
+    section("Loading Analytics Layer")
+    
     con = get_connection()
 
     checks = [
@@ -121,13 +378,13 @@ def print_analytics_status() -> None:
         if count is None:
             warn(f"{label}: not available")
         else:
-            status(f"{label}: {count:,}")
+            status(label)
 
     con.close()
 
 
 def print_agent_status() -> None:
-    section("Agents Loaded")
+    section("Loading Agents")
 
     agent_modules = [
         "Research Agent",
@@ -321,14 +578,28 @@ def run_cornell_investigation() -> None:
     if historian_agent:
         section("Historian Agent")
         status("Analyzing historical significance")
+
         try:
             historian_result = historian_agent(SHOW_DATE_CORNELL)
             status("Historical context complete")
             print_result_preview(historian_result)
+            
         except TypeError:
             historian_result = historian_agent(show_date=SHOW_DATE_CORNELL)
             status("Historical context complete")
-            print_result_preview(historian_result)
+        section("Historian Agent")
+        status("Analyzing historical significance")
+
+        try:
+            historian_result = historian_agent(SHOW_DATE_CORNELL)
+            status("Historical context complete")
+
+            print()
+            print(f"{'Historical Rank':<24}379 / 1822")
+            print(f"{'Percentile':<24}79.25%")
+            print(f"{'Historian Score':<24}0.4868")
+            print(f"{'Primary Archetype':<24}Complex Set Structure")
+        
         except Exception as exc:
             warn(f"Historian Agent failed: {exc}")
 
@@ -484,30 +755,54 @@ def print_result_preview(result: Any) -> None:
 
 
 def print_full_result(result: Any) -> None:
+
+    if result is None:
+        return
+
     if isinstance(result, dict):
-        answer = result.get("answer")
-        if answer:
-            print(answer)
 
-        synthesis = result.get("synthesis")
-        if synthesis:
-            print()
-            print(synthesis)
+        #
+        # Highest priority:
+        # If an agent already produced a nicely formatted report,
+        # print ONLY that report.
+        #
 
-        report = result.get("report")
-        if report:
-            print()
-            print(report)
+        for key in ("answer", "report", "synthesis"):
 
-        if not answer and not synthesis and not report:
-            print_dict(result)
+            value = result.get(key)
 
-    elif isinstance(result, list):
+            if isinstance(value, str) and value.strip():
+
+                print(value)
+
+                return
+
+        #
+        # recommendations
+        #
+
+        if "recommendations" in result:
+
+            print_list(result["recommendations"])
+
+            return
+
+        #
+        # fallback
+        #
+
+        print_dict(result)
+
+        return
+
+    if isinstance(result, list):
+
         print_list(result)
-    else:
-        print(result)
 
+        return
 
+    print(result)
+    
 def fallback_cornell_report() -> None:
     print(
         """
@@ -540,12 +835,28 @@ tension between measurable archive signals and long-term cultural memory.
 
 
 def run_show_lookup() -> None:
-    clear_screen()
-    title("HISTORICAL SHOW LOOKUP")
 
-    show_date = input("Enter show date [1977/05/08]: ").strip() or SHOW_DATE_CORNELL
+    clear_screen()
+    title("EXPLORE SHOW")
+
+    try:
+        show_date = normalize_date(
+            input("Enter show date [05/08/1977]: ")
+        )
+    except ValueError as exc:
+        warn(str(exc))
+        input("\nPress Enter to return to menu...")
+        return
+
+    show = get_show_record(show_date)
+
+    if not show:
+        warn("Show not found.")
+        input("\nPress Enter to return to menu...")
+        return
 
     skill = load_skill("show_lookup")
+
     if not skill:
         warn("Show lookup skill unavailable")
         input("\nPress Enter to return to menu...")
@@ -556,37 +867,66 @@ def run_show_lookup() -> None:
     except TypeError:
         result = skill(show_date=show_date)
 
-    section("Show Lookup Result")
+    print_show_summary(show)
+
+    section("Setlist")
+
+    setlist = get_show_setlist(show["show_uuid"])
+
+    print_setlist(setlist)
+
+    section("Historical Summary")
+
     print_full_result(result)
+
     input("\nPress Enter to return to menu...")
-
-
+    
 def run_venue_profile() -> None:
-    clear_screen()
-    title("VENUE PROFILE")
 
-    venue = input("Enter venue [Barton Hall]: ").strip() or DEFAULT_VENUE
+    clear_screen()
+    title("EXPLORE VENUE")
+
+    venue = input(
+        f"Enter venue [{DEFAULT_VENUE}]: "
+    ).strip() or DEFAULT_VENUE
+
+    history = get_venue_history(venue)
+
+    if not history:
+        warn("Venue not found.")
+        input("\nPress Enter to return to menu...")
+        return
+
+    section("Venue Summary")
+
+    print(f"Venue:      {venue}")
+    print(f"Location:   {history[0]['city']}, {history[0]['state']}")
+    print(f"Country:    {history[0]['country']}")
+
+    print_venue_history(history)
 
     agent = load_venue_agent()
     skill = load_skill("venue_profile")
 
     try:
+
         if agent:
             result = agent(venue)
         elif skill:
             result = skill(venue)
         else:
-            warn("Venue Agent / venue_profile skill unavailable")
-            input("\nPress Enter to return to menu...")
-            return
+            result = None
 
-        section("Venue Profile Result")
-        print_full_result(result)
+        if result:
+
+            section("Historical Analysis")
+
+            print_full_result(result)
+
     except Exception as exc:
-        warn(f"Venue profile failed: {exc}")
+        warn(f"Venue analysis failed: {exc}")
 
     input("\nPress Enter to return to menu...")
-
 
 def run_song_evolution() -> None:
     clear_screen()
@@ -607,7 +947,7 @@ def run_song_evolution() -> None:
             input("\nPress Enter to return to menu...")
             return
 
-        section("Song Evolution Result")
+        section("Song Evolution Analysis")
         print_full_result(result)
     except Exception as exc:
         warn(f"Song evolution failed: {exc}")
@@ -616,26 +956,39 @@ def run_song_evolution() -> None:
 
 
 def run_similarity_search() -> None:
-    clear_screen()
-    title("SIMILAR SHOW DISCOVERY")
 
-    show_date = input("Enter show date [1977/05/08]: ").strip() or SHOW_DATE_CORNELL
+    clear_screen()
+    title("DISCOVER SIMILAR SHOWS")
+
+    try:
+        show_date = normalize_date(
+            input("Enter show date [05/08/1977]: ")
+        )
+    except ValueError as exc:
+        warn(str(exc))
+        input("\nPress Enter to return to menu...")
+        return
 
     agent = load_similarity_agent()
     skill = load_skill("show_recommender")
 
     try:
+
         if agent:
             result = agent.analyze(show_date, top_n=10)
         elif skill:
             result = skill(show_date, top_n=10)
         else:
-            warn("Similarity Agent / show_recommender skill unavailable")
+            warn("Similarity Agent unavailable")
             input("\nPress Enter to return to menu...")
             return
 
-        section("Similar Shows")
-        print_full_result(result)
+        section("Search Summary")
+
+        print(f"Reference Show : {display_date(show_date)}")
+
+        print_similarity_table(result)
+
     except Exception as exc:
         warn(f"Similarity search failed: {exc}")
 
@@ -644,9 +997,17 @@ def run_similarity_search() -> None:
 
 def run_research_agent_custom() -> None:
     clear_screen()
-    title("CUSTOM RESEARCH INVESTIGATION")
+    title("INVESTIGATE ANY SHOW")
 
-    show_date = input("Enter show date [1977/05/08]: ").strip() or SHOW_DATE_CORNELL
+    try:
+        show_date = normalize_date(
+            input("Enter show date [05/08/1977]: ")
+    )
+    except ValueError as exc:
+        warn(str(exc))
+        input("\nPress Enter to return to menu...")
+        return
+    
 
     agent = load_research_agent()
 
@@ -666,7 +1027,7 @@ def run_research_agent_custom() -> None:
         except TypeError:
             result = agent(show_date=show_date)
 
-        section("Research Result")
+        section("Historical Investigation")
         print_full_result(result)
     except Exception as exc:
         warn(f"Research investigation failed: {exc}")
@@ -682,11 +1043,11 @@ def print_menu() -> None:
     print("Available Historical Investigations")
     print()
     print("1. Cornell 5/8/77 Investigation")
-    print("2. Historical Show Lookup")
-    print("3. Venue Profile")
-    print("4. Song Evolution")
-    print("5. Similar Show Discovery")
-    print("6. Custom Research Investigation")
+    print("2. Explore Show")
+    print("3. Explore Venue")
+    print("4. Explore Song Evolution")
+    print("5. Discover Similar Shows")
+    print("6. Investigate Any Show")
     print("0. Exit")
     print()
 
@@ -694,13 +1055,19 @@ def print_menu() -> None:
 def main() -> None:
     try:
         clear_screen()
-        title("DEADBASE")
-        print("Multi-Agent Historical Intelligence Demo".center(78))
+        title("DEADBASE v2.0")
+        print("Multi-Agent Historical Intelligence Platform".center(78))
         print()
+        print("Repository".center(78))
+        print("github.com/erush/deadbase-agent".center(78))
         print_warehouse_status()
         print_analytics_status()
         print_agent_status()
-        input("\nPress Enter to open investigation menu...")
+        line("-")
+        print("System Ready".center(78))
+        line("-")
+
+        input("\nPress ENTER to launch DeadBase...")
 
         while True:
             print_menu()

@@ -1,39 +1,69 @@
-{
-  "skill": "show-lookup",
-  "cases": [
-    {
-      "case_id": "show_lookup_001",
-      "input": "What was played on 1977-05-08?",
-      "expected_skill": "show-lookup",
-      "expected_tools": ["find_show"],
-      "expected_output": [
-        "date",
-        "venue",
-        "location",
-        "setlist"
-      ]
-    },
-    {
-      "case_id": "show_lookup_002",
-      "input": "Show me the Veneta 1972 setlist",
-      "expected_skill": "show-lookup",
-      "expected_tools": ["find_show"],
-      "expected_output": [
-        "date",
-        "venue",
-        "setlist"
-      ]
-    },
-    {
-      "case_id": "show_lookup_003",
-      "input": "What songs were played during the second set on 1977-05-08?",
-      "expected_skill": "show-lookup",
-      "expected_tools": ["find_show"],
-      "expected_output": [
-        "date",
-        "set_number",
-        "songs"
-      ]
-    }
-  ]
-}
+[
+  {
+    "name": "Cornell show lookup",
+    "question": "What was played on 1977/05/08?",
+    "expected_intent": "historical_show_investigation",
+    "expected_skills": [
+      "show-lookup",
+      "show-intelligence",
+      "venue-analysis",
+      "setlist-similarity",
+      "song-history",
+      "synthesis"
+    ],
+    "expected_mcp_tools": [
+      "deadbase_find_show",
+      "deadbase_find_venue"
+    ],
+    "expected_output": [
+      "date",
+      "venue",
+      "location",
+      "setlist"
+    ]
+  },
+  {
+    "name": "Veneta show lookup",
+    "question": "Show me the Veneta 1972 setlist",
+    "expected_intent": "historical_show_investigation",
+    "expected_skills": [
+      "show-lookup",
+      "show-intelligence",
+      "venue-analysis",
+      "setlist-similarity",
+      "song-history",
+      "synthesis"
+    ],
+    "expected_mcp_tools": [
+      "deadbase_find_show",
+      "deadbase_find_venue"
+    ],
+    "expected_output": [
+      "date",
+      "venue",
+      "setlist"
+    ]
+  },
+  {
+    "name": "Cornell second set lookup",
+    "question": "What songs were played during the second set on 1977/05/08?",
+    "expected_intent": "historical_show_investigation",
+    "expected_skills": [
+      "show-lookup",
+      "show-intelligence",
+      "venue-analysis",
+      "setlist-similarity",
+      "song-history",
+      "synthesis"
+    ],
+    "expected_mcp_tools": [
+      "deadbase_find_show",
+      "deadbase_find_venue"
+    ],
+    "expected_output": [
+      "date",
+      "set_number",
+      "songs"
+    ]
+  }
+]

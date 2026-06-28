@@ -1,0 +1,40 @@
+
+
+[
+  {
+    "name": "Cornell synthesis",
+    "question": "Was Cornell 1977 actually unique?",
+    "expected_agent": "synthesis-agent",
+    "required_sections": [
+      "Model Position",
+      "Archetype Assessment",
+      "Interpretive Finding",
+      "Conclusion"
+    ],
+    "required_fields": [
+      "show_date",
+      "significance_band",
+      "archetype_read",
+      "reputation_read",
+      "answer"
+    ]
+  },
+  {
+    "name": "Generic historical synthesis",
+    "question": "Historical investigation for 1983/08/20",
+    "expected_agent": "synthesis-agent",
+    "required_sections": [
+      "Model Position",
+      "Archetype Assessment",
+      "Interpretive Finding",
+      "Conclusion"
+    ],
+    "required_fields": [
+      "show_date",
+      "significance_band",
+      "archetype_read",
+      "reputation_read",
+      "answer"
+    ]
+  }
+]

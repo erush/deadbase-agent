@@ -13,137 +13,135 @@ DB_PATH = (
 )
 
 
-def determine_era(year):
-
-    if year <= 1969:
-        return "60s"
-
-    if year <= 1974:
-        return "early_70s"
-
-    if year <= 1979:
-        return "late_70s"
-
-    if year <= 1984:
-        return "early_80s"
-
-    if year <= 1989:
-        return "late_80s"
-
-    return "90s"
-
-
 def main():
-
     con = duckdb.connect(str(DB_PATH))
 
-    df = con.execute(
+    profile = con.execute(
         """
         select
-            p.show_uuid,
-            s.show_date,
-            p.song_name,
-            p.set_number,
-            p.segued
-        from performances p
-        join shows s
-            on p.show_uuid = s.show_uuid
+            show_uuid,
+            show_date,
+            year,
+            era,
+            venue,
+            city,
+            state,
+            country,
+            has_performance_data
+        from show_profile
+        order by show_date
         """
     ).df()
 
-    df["year"] = (
-        df["show_date"]
-        .str.slice(0, 4)
-        .astype(int)
-    )
+    performances = con.execute(
+        """
+        select
+            show_uuid,
+            song_name,
+            set_number,
+            segued
+        from performances
+        """
+    ).df()
 
     rows = []
 
-    for show_uuid, group in df.groupby(
-        "show_uuid"
-    ):
+    for _, show in profile.iterrows():
+        show_uuid = show["show_uuid"]
 
-        first = group.iloc[0]
+        group = performances[
+            performances["show_uuid"] == show_uuid
+        ]
 
-        year = int(first["year"])
+        has_perf = len(group) > 0
 
-        rows.append(
-            {
+        if has_perf:
+            segued_count = int(
+                group["segued"]
+                .fillna(False)
+                .sum()
+            )
+
+            song_count = int(len(group))
+
+            segue_ratio = round(
+                float(segued_count) / song_count,
+                3
+            ) if song_count > 0 else None
+
+            row = {
                 "show_uuid": show_uuid,
-                "show_date": first["show_date"],
-                "year": year,
-                "era": determine_era(year),
+                "show_date": show["show_date"],
+                "year": int(show["year"]) if pd.notna(show["year"]) else None,
+                "era": show["era"],
+                "venue": show["venue"],
+                "city": show["city"],
+                "state": show["state"],
+                "country": show["country"],
 
-                "show_length":
-                    len(group),
+                "has_performance_data": True,
+                "dna_complete": True,
+                "processing_status": "COMPLETE",
 
-                "song_count":
-                    len(group),
+                "show_length": song_count,
+                "song_count": song_count,
+                "unique_song_count": int(group["song_name"].nunique()),
+                "set_count": int(group["set_number"].nunique()),
 
-                "unique_song_count":
-                    group["song_name"].nunique(),
+                "first_set_count": int(len(group[group["set_number"] == 1])),
+                "second_set_count": int(len(group[group["set_number"] == 2])),
+                "third_set_plus_count": int(len(group[group["set_number"] >= 3])),
 
-                "set_count":
-                    group["set_number"].nunique(),
-
-                "first_set_count":
-                    len(
-                        group[
-                            group["set_number"] == 1
-                        ]
-                    ),
-
-                "second_set_count":
-                    len(
-                        group[
-                            group["set_number"] == 2
-                        ]
-                    ),
-
-                "third_set_plus_count":
-                    len(
-                        group[
-                            group["set_number"] >= 3
-                        ]
-                    ),
-
-                "segued_count":
-                    int(
-                        group["segued"]
-                        .fillna(False)
-                        .sum()
-                    ),
-
-                "segue_ratio":
-                    round(
-                        float(
-                            group["segued"]
-                            .fillna(False)
-                            .sum()
-                        )
-                        / len(group),
-                        3
-                    )
+                "segued_count": segued_count,
+                "segue_ratio": segue_ratio,
             }
-        )
+
+        else:
+            row = {
+                "show_uuid": show_uuid,
+                "show_date": show["show_date"],
+                "year": int(show["year"]) if pd.notna(show["year"]) else None,
+                "era": show["era"],
+                "venue": show["venue"],
+                "city": show["city"],
+                "state": show["state"],
+                "country": show["country"],
+
+                "has_performance_data": False,
+                "dna_complete": False,
+                "processing_status": "INSUFFICIENT_DATA",
+
+                "show_length": 0,
+                "song_count": 0,
+                "unique_song_count": 0,
+                "set_count": 0,
+
+                "first_set_count": 0,
+                "second_set_count": 0,
+                "third_set_plus_count": 0,
+
+                "segued_count": 0,
+                "segue_ratio": None,
+            }
+
+        rows.append(row)
 
     show_dna = pd.DataFrame(rows)
 
     show_dna = show_dna.sort_values(
         [
+            "has_performance_data",
             "show_length",
-            "show_date"
+            "show_date",
         ],
         ascending=[
             False,
-            True
-        ]
+            False,
+            True,
+        ],
     )
 
-    con.register(
-        "show_dna_df",
-        show_dna
-    )
+    con.register("show_dna_df", show_dna)
 
     con.execute(
         """
@@ -153,10 +151,26 @@ def main():
         """
     )
 
+    total_rows = con.execute("select count(*) from show_dna").fetchone()[0]
+    complete_rows = con.execute(
+        """
+        select count(*)
+        from show_dna
+        where dna_complete = true
+        """
+    ).fetchone()[0]
+    metadata_only_rows = con.execute(
+        """
+        select count(*)
+        from show_dna
+        where dna_complete = false
+        """
+    ).fetchone()[0]
+
     print()
-    print(
-        f"show_dna_rows={len(show_dna)}"
-    )
+    print(f"show_dna_rows={total_rows}")
+    print(f"dna_complete_rows={complete_rows}")
+    print(f"metadata_only_rows={metadata_only_rows}")
     print()
 
     print(
@@ -170,7 +184,8 @@ def main():
                 set_count,
                 third_set_plus_count,
                 segued_count,
-                segue_ratio
+                segue_ratio,
+                dna_complete
             from show_dna
             order by show_length desc
             limit 20
@@ -186,8 +201,10 @@ def main():
             select
                 era,
                 count(*) as shows,
-                round(avg(show_length), 2) as avg_show_length,
-                round(avg(set_count), 2) as avg_sets,
+                sum(case when dna_complete then 1 else 0 end) as complete_dna,
+                sum(case when not dna_complete then 1 else 0 end) as metadata_only,
+                round(avg(nullif(show_length, 0)), 2) as avg_show_length,
+                round(avg(nullif(set_count, 0)), 2) as avg_sets,
                 round(avg(segue_ratio), 3) as avg_segue_ratio
             from show_dna
             group by era

@@ -2,215 +2,291 @@
 
 ## Purpose
 
-The DeadBase Agent serves as the orchestration layer between users, skills, and MCP tools.
+The Agent Orchestration layer coordinates the complete execution lifecycle of a DeadBase historical investigation.
 
-The agent is responsible for:
+It transforms a user's research question into a deterministic, evidence-based historical report using the Planning Agent, Investigation Session, Agent Skills, MCP tools, and Synthesis Agent.
+
+The orchestration layer is responsible for execution.
+
+Historical reasoning belongs to specialist Agent Skills.
+
+---
+
+# Objectives
+
+The orchestration layer shall:
+
+- receive research questions
+- create an Investigation Session
+- invoke the Planning Agent
+- select the appropriate Agent Skills
+- coordinate MCP tool execution
+- collect structured evidence
+- invoke the Synthesis Agent
+- return a fully explainable historical report
+
+---
+
+# Runtime Architecture
+
+Every investigation follows the same execution pipeline.
+
+```text
+User Question
+        ↓
+Planning Agent
+        ↓
+Investigation Session
+        ↓
+Agent Skill Selection
+        ↓
+MCP Tool Invocation
+        ↓
+Evidence Collection
+        ↓
+Synthesis Agent
+        ↓
+Historical Investigation Report
+```
+
+---
+
+# Component Responsibilities
+
+## Planning Agent
+
+Responsible for:
 
 - understanding user intent
-- selecting the correct skill
-- invoking MCP tools
-- generating evidence-based responses
+- selecting Agent Skills
+- initiating investigations
+- managing execution flow
 
-The agent does not directly access YAML files.
-
-The agent does not directly query DuckDB.
-
-All data access occurs through MCP tools.
+The Planning Agent never performs historical analysis.
 
 ---
 
-# Architecture
+## Investigation Session
 
-User
+Responsible for:
 
-↓
+- shared execution context
+- execution trace
+- selected skills
+- tool invocations
+- collected evidence
+- final report
 
-DeadBase Agent
-
-↓
-
-Skill Selection
-
-↓
-
-MCP Tool
-
-↓
-
-DuckDB Archive
-
-↓
-
-Response
+Exactly one Investigation Session exists per investigation.
 
 ---
 
-# Agent Responsibilities
+## Agent Skills
 
-The agent must:
+Each Agent Skill performs one specialized historical task.
 
-1. Receive user query
-2. Determine intent
-3. Select skill
-4. Execute MCP tool
-5. Format response
-6. Return evidence
+Current Agent Skills include:
 
-The agent must never fabricate historical information.
+- show-lookup
+- show-intelligence
+- song-history
+- song-evolution
+- venue-analysis
+- tour-analysis
+- setlist-similarity
 
----
+Agent Skills never route investigations.
 
-# Skill Routing
-
-## Show Lookup
-
-Questions:
-
-- What was played on 1977/05/08?
-- Show me Cornell 1977.
-- What was the setlist at Veneta?
-
-Selected Skill:
-
-show-lookup
-
-MCP Tool:
-
-find_show
+Agent Skills never synthesize reports.
 
 ---
 
-## Song History
+## MCP Tool Layer
 
-Questions:
+Agent Skills access historical data exclusively through MCP tools.
 
-- When was Dark Star first played?
-- When was Dark Star last played?
-- How many times was Althea played?
+Example tools include:
 
-Selected Skill:
+- deadbase_show_lookup
+- deadbase_song_history
+- deadbase_song_evolution
+- deadbase_venue_analysis
+- deadbase_setlist_similarity
+- deadbase_tour_analysis
 
-song-history
-
-MCP Tool:
-
-find_song
-
----
-
-## Venue Analysis
-
-Questions:
-
-- Tell me about Winterland.
-- Which venue hosted the most shows?
-
-Selected Skill:
-
-venue-analysis
-
-MCP Tool:
-
-find_venue
+MCP tools return structured historical evidence.
 
 ---
 
-## Tour Analysis
+## Knowledge Layer
 
-Questions:
+MCP tools retrieve information from the analytical warehouse.
 
-- Summarize Europe 72.
-- Tell me about Spring 1977.
+The warehouse consists of:
 
-Selected Skill:
+- canonical archive tables
+- analytical feature tables
+- derived historical intelligence
 
-tour-analysis
-
-MCP Tool:
-
-find_tour
+The orchestration layer never queries DuckDB directly.
 
 ---
 
-## Setlist Similarity
+## Synthesis Agent
 
-Questions:
+The Synthesis Agent receives structured evidence collected during the investigation.
 
-- Find shows similar to Cornell.
-- Compare Cornell and Veneta.
+Responsibilities include:
 
-Selected Skill:
+- integrating evidence
+- resolving findings
+- generating the final historical narrative
 
-setlist-similarity
-
-MCP Tool:
-
-compare_setlists
+The Synthesis Agent never performs additional database queries.
 
 ---
 
-# Response Structure
+# Skill Selection
 
-All responses should contain:
+The Planning Agent determines which Agent Skills should execute.
 
-1. Answer
-2. Supporting Evidence
-3. Historical Context
+Only required skills participate in an investigation.
 
 Example:
 
 Question:
 
-When was Dark Star last played before Cornell 1977?
+Why is Cornell 5/8/77 considered legendary?
 
-Answer:
+Selected Agent Skills:
 
-1974/10/18
+- show-lookup
+- show-intelligence
+- venue-analysis
+- setlist-similarity
+- song-history
+- song-evolution
 
-Supporting Evidence:
-
-Venue
-Location
-Show Date
-
-Historical Context:
-
-Dark Star entered a performance hiatus following this period.
+Not every investigation requires every Agent Skill.
 
 ---
 
-# Error Handling
+# Investigation Flow
 
-If no matching data exists:
+Each investigation proceeds through these stages.
 
-Return:
+## Stage 1
 
-- skill selected
-- reason no data was found
+Receive research question.
 
-Do not hallucinate results.
+## Stage 2
+
+Create Investigation Session.
+
+## Stage 3
+
+Determine investigation intent.
+
+## Stage 4
+
+Select Agent Skills.
+
+## Stage 5
+
+Invoke MCP tools.
+
+## Stage 6
+
+Collect structured evidence.
+
+## Stage 7
+
+Launch Synthesis Agent.
+
+## Stage 8
+
+Generate Historical Investigation Report.
 
 ---
 
 # Observability
 
-The agent should log:
+Every investigation records:
 
-- user query
-- selected skill
-- selected MCP tool
-- execution time
+- original question
+- selected Agent Skills
+- MCP tool invocations
+- execution trace
+- evidence collected
+- investigation duration
+- final report
+
+This information supports debugging, evaluation, and explainability.
 
 ---
 
-# Success Criteria
+# Determinism
 
-The orchestration layer is complete when:
+The orchestration layer is deterministic.
 
-- show-lookup routes correctly
-- song-history routes correctly
-- venue-analysis routes correctly
-- tour-analysis routes correctly
-- setlist-similarity routes correctly
+The same question executed against the same warehouse should produce:
 
-and all responses are generated using MCP tools only.
+- identical Agent Skill selection
+- identical MCP tool usage
+- identical execution trace
+- identical evidence
+- identical synthesized report
+
+---
+
+# Security
+
+The orchestration layer never:
+
+- modifies archival data
+- executes arbitrary code
+- bypasses MCP tools
+- accesses source YAML directly
+
+Historical investigations are strictly read-only.
+
+---
+
+# Evaluation
+
+Successful orchestration demonstrates:
+
+- correct Planning Agent decisions
+- correct Agent Skill selection
+- correct MCP tool usage
+- complete evidence collection
+- successful synthesis
+- reproducible execution
+
+---
+
+# Relationship to the DeadBase Architecture
+
+The orchestration layer connects every major subsystem.
+
+```text
+Project Specification
+        ↓
+Planning Agent
+        ↓
+Investigation Session
+        ↓
+Agent Orchestration
+        ↓
+Agent Skills
+        ↓
+MCP Tool Layer
+        ↓
+Knowledge Layer
+        ↓
+Analytical Warehouse
+        ↓
+Historical Archive
+```
+
+The orchestration layer is the runtime backbone of the DeadBase historical intelligence platform.

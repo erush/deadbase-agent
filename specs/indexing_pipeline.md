@@ -1,228 +1,218 @@
 # Indexing Pipeline Specification
 
-## Objective
+## Purpose
 
-Transform raw Grateful Dead YAML archives into a normalized research catalog that can be accessed through MCP tools.
+The Indexing Pipeline transforms raw Grateful Dead archival records into a structured historical knowledge base that powers the DeadBase multi-agent research system.
 
-The indexing pipeline is the foundation of DeadBase.
+The pipeline is deterministic, reproducible, and fully rebuildable from source archives.
 
-All research, retrieval, analysis, and agent behavior depend on this catalog.
+The warehouse produced by this pipeline serves as the authoritative knowledge layer accessed through MCP tools during historical investigations.
 
 ---
 
-# Inputs
+# Objectives
 
-## Show Archive
+The Indexing Pipeline is responsible for:
 
-Source:
+- Loading historical YAML archives
+- Validating archival integrity
+- Building the canonical DuckDB warehouse
+- Generating analytical features
+- Producing agent-ready knowledge assets
+- Supporting deterministic historical investigations
 
+The pipeline never generates narratives.
+
+Narrative generation belongs to the Synthesis Agent.
+
+---
+
+# Data Flow
+
+Every historical record follows the same lifecycle.
+
+```text
+Historical YAML Archive
+            ↓
+Archive Validation
+            ↓
+Canonical Warehouse
+            ↓
+Analytical Feature Engineering
+            ↓
+Knowledge Layer
+            ↓
+MCP Tool Layer
+            ↓
+Planning Agent
+            ↓
+Historical Investigation
+```
+
+---
+
+# Source Data
+
+Primary archive:
+
+```text
 data/yaml/
+```
 
-Structure:
+Contents include:
 
-YYYY/MM/DD
-→ show metadata
-→ venue metadata
-→ set information
-→ song performances
+- Shows
+- Songs
+- Venues
+- Performances
+- Tours
 
-Example fields:
-
-- uuid
-- venue
-- city
-- state
-- country
-- sets
+These files represent the authoritative historical record.
 
 ---
 
-## Song Catalog
+# Stage 1 — Archive Validation
 
-Source:
+Validate every YAML document before loading.
 
-data/yaml/
+Checks include:
 
-Structure:
+- required fields
+- valid identifiers
+- valid dates
+- structural integrity
 
-Song Name
-→ Song UUID
-
-Example:
-
-Dark Star
-→ 0ead60da-6abf-4589-98dd-e56faca0c767
-
-This dataset represents the authoritative song dimension.
+Malformed records should be rejected without affecting valid records.
 
 ---
 
-# Output
+# Stage 2 — Canonical Warehouse
 
-Target:
+Build the normalized DuckDB warehouse.
 
-data/duckdb/deadbase.duckdb
+Primary tables:
 
-The database must be fully rebuildable from source YAML.
+- shows
+- songs
+- performances
+- venues
 
----
-
-# Warehouse Tables
-
-## shows
-
-One row per performance date.
-
-Columns:
-
-- show_uuid
-- show_date
-- venue
-- city
-- state
-- country
-
-Primary Key:
-
-show_uuid
+The warehouse is the system of record used throughout DeadBase.
 
 ---
 
-## songs
+# Stage 3 — Analytical Feature Engineering
 
-One row per unique song.
+Generate derived analytical datasets used by Agent Skills.
 
-Columns:
+Examples include:
 
-- song_uuid
-- song_name
+- show_profiles
+- show_embeddings
+- show_clusters
+- show_archetypes
+- show_historical_significance
+- venue_profiles
+- venue_rankings
+- song_profiles
+- song_evolution
 
-Primary Key:
+These datasets are deterministic transformations of the canonical warehouse.
 
-song_uuid
-
----
-
-## performances
-
-One row per song performance.
-
-Columns:
-
-- show_uuid
-- song_uuid
-- song_name
-- set_number
-- song_position
-- segued
-
-Relationships:
-
-show_uuid → shows
-
-song_uuid → songs
+No historical facts are invented during feature generation.
 
 ---
 
-## venues
+# Stage 4 — Knowledge Layer
 
-One row per venue.
+The analytical datasets form the structured knowledge layer consumed by the DeadBase agent system.
 
-Columns:
+This layer exposes historical intelligence rather than raw database rows.
 
-- venue
-- city
-- state
-- country
+Agent Skills operate against this knowledge layer.
 
 ---
 
-# Pipeline Stages
+# Stage 5 — MCP Tool Layer
 
-## Stage 1
+The Planning Agent never queries DuckDB directly.
 
-Load all YAML archives.
+Instead, historical data is accessed through deterministic MCP tools.
 
-Validate structure.
+Example tools include:
 
-Reject malformed records.
+- deadbase_show_lookup
+- deadbase_song_history
+- deadbase_song_evolution
+- deadbase_venue_analysis
+- deadbase_setlist_similarity
+- deadbase_tour_analysis
 
----
-
-## Stage 2
-
-Extract show metadata.
-
-Populate:
-
-shows
+MCP tools provide a standardized interface between the agent system and the warehouse.
 
 ---
 
-## Stage 3
+# Stage 6 — Historical Investigation
 
-Extract song catalog.
+During execution:
 
-Populate:
+```text
+Planning Agent
+        ↓
+Investigation Session
+        ↓
+Agent Skills
+        ↓
+MCP Tool Calls
+        ↓
+Evidence Collection
+        ↓
+Synthesis Agent
+        ↓
+Historical Investigation Report
+```
 
-songs
-
----
-
-## Stage 4
-
-Extract setlists.
-
-Generate performance records.
-
-Populate:
-
-performances
-
----
-
-## Stage 5
-
-Generate venue dimension.
-
-Populate:
-
-venues
+The Indexing Pipeline supplies the structured evidence used throughout this workflow.
 
 ---
 
-# Data Quality Rules
+# Warehouse Requirements
 
-Every show must contain:
+The warehouse must be:
 
-- show_uuid
-- show_date
+- deterministic
+- reproducible
+- read-only during investigations
+- fully rebuildable from source YAML
 
-Every song must contain:
-
-- song_uuid
-- song_name
-
-Performance rows require:
-
-- show_uuid
-- song_name
-
-Empty setlists are valid.
-
-Historical records with incomplete metadata should still be indexed.
+Manual modification of warehouse data is prohibited.
 
 ---
 
-# Rebuild Requirements
+# Data Quality
 
-The pipeline must be idempotent.
+Every investigation depends on warehouse integrity.
 
-The database must be reproducible from source YAML.
+Validation requirements include:
 
-No manual updates are permitted.
+- unique show identifiers
+- valid song identifiers
+- valid relationships
+- reproducible analytical features
 
-All derived tables must be regenerated through the pipeline.
+Derived datasets must remain synchronized with the canonical warehouse.
+
+---
+
+# Security
+
+The Indexing Pipeline:
+
+- never modifies source YAML
+- never overwrites archival history
+- never accepts user-generated historical content
+
+Source archives remain immutable.
 
 ---
 
@@ -230,17 +220,19 @@ All derived tables must be regenerated through the pipeline.
 
 The pipeline is complete when:
 
-- all YAML files load
-- all shows are indexed
-- all songs are indexed
-- all performances are indexed
-- all venues are indexed
-- deadbase.duckdb is generated
+- all YAML archives validate successfully
+- the canonical DuckDB warehouse is generated
+- analytical feature tables are generated
+- the knowledge layer is refreshed
+- MCP tools return deterministic results
+- Planning Agent investigations execute successfully against the rebuilt warehouse
 
-The resulting catalog must support:
+---
 
-- show lookup
-- song history
-- venue analysis
-- tour analysis
-- setlist similarity
+# Relationship to the Agent Architecture
+
+The Indexing Pipeline is responsible only for preparing historical knowledge.
+
+It does not perform reasoning.
+
+Reasoning begins when the Planning Agent creates an Investigation Session and launches a historical investigation using Agent Skills and MCP tools.

@@ -74,20 +74,91 @@ Every feature must have evaluation coverage.
 
 # Architectural Principles
 
-## Single Agent
+DeadBase is an **evidence-based historical intelligence platform** built using a deterministic multi-agent architecture.
 
-DeadBase uses:
+The system prioritizes explainability, reproducibility, and grounded historical research over autonomous or stochastic behavior.
+
+Every investigation follows the same execution lifecycle.
 
 ```text
-One Agent
-Many Skills
+User Question
+        ↓
+Planning Agent
+        ↓
+Agent Skill Selection
+        ↓
+MCP Tool Invocation
+        ↓
+Evidence Collection
+        ↓
+Investigation Session
+        ↓
+Synthesis Agent
+        ↓
+Historical Report
 ```
 
-Do not create multiple autonomous agents unless explicitly required.
+Each stage has a single responsibility.
 
-Skills are preferred over agent proliferation.
+The Planning Agent determines which Agent Skills are required.
+
+Agent Skills invoke MCP tools to retrieve structured historical evidence from the archival warehouse.
+
+The Investigation Session maintains shared context throughout execution.
+
+The Synthesis Agent combines the collected evidence into a grounded historical report.
+
+No stage generates historical facts without supporting evidence.
 
 ---
+
+## Investigation Session
+
+Every investigation maintains a shared **Investigation Session** for the duration of execution.
+
+The Investigation Session preserves context between the Planning Agent, Agent Skills, MCP tools, and Synthesis Agent.
+
+Each session records:
+
+- Original research question
+- Selected Agent Skills
+- MCP tool invocations
+- Tool execution results
+- Evidence collected
+- Intermediate reasoning artifacts
+- Final synthesized report
+
+The Investigation Session exists only for the lifetime of an investigation.
+
+It never modifies archival data.
+
+Its purpose is to provide deterministic context management, traceability, and explainability across the entire research workflow.
+
+---
+
+## Agent Architecture
+
+DeadBase follows the principle:
+
+```text
+One Planning Agent
+        ↓
+Many Agent Skills
+        ↓
+One Synthesis Agent
+```
+
+The Planning Agent is responsible for orchestration.
+
+Agent Skills perform specialized historical investigations.
+
+The Synthesis Agent is responsible for evidence integration and report generation.
+
+New functionality should extend existing Agent Skills whenever practical.
+
+Create new Agent Skills only when introducing fundamentally new historical capabilities.
+
+Avoid unnecessary agent proliferation.
 
 ## Read Only Architecture
 
@@ -309,7 +380,7 @@ A feature is complete only when:
 - implementation complete
 
 Incomplete features must not be marked complete.
-
+x
 ---
 
 # DeadBase Principles

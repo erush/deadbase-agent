@@ -37,6 +37,14 @@ def main():
         select
             show_uuid,
             show_date,
+            year,
+            era,
+            venue,
+            city,
+            state,
+            country,
+            processing_status,
+            dna_complete,
             show_length,
             set_count,
             segue_ratio
@@ -51,15 +59,6 @@ def main():
             importance_score,
             rarity_score
         from venue_rankings
-        """
-    ).df()
-
-    venue_lookup = con.execute(
-        """
-        select
-            show_uuid,
-            venue
-        from shows
         """
     ).df()
 
@@ -133,11 +132,6 @@ def main():
     df = (
         show_df
         .merge(
-            venue_lookup,
-            on="show_uuid",
-            how="left"
-        )
-        .merge(
             venue_df,
             on="venue",
             how="left"
@@ -149,64 +143,84 @@ def main():
         )
     )
 
-    df["show_length_score"] = normalize(
-        df["show_length"]
+    complete_df = df[df["dna_complete"]].copy()
+    incomplete_df = df[~df["dna_complete"]].copy()
+
+    complete_df["show_length_score"] = normalize(
+        complete_df["show_length"]
     )
 
-    df["set_complexity_score"] = normalize(
-        df["set_count"]
+    complete_df["set_complexity_score"] = normalize(
+        complete_df["set_count"]
     )
 
-    df["segue_score"] = normalize(
-        df["segue_ratio"]
+    complete_df["segue_score"] = normalize(
+        complete_df["segue_ratio"]
     )
 
-    df["venue_importance_score"] = normalize(
-        df["importance_score"]
+    complete_df["venue_importance_score"] = normalize(
+        complete_df["importance_score"]
     )
 
-    df["venue_rarity_score"] = normalize(
-        df["rarity_score"]
+    complete_df["venue_rarity_score"] = normalize(
+        complete_df["rarity_score"]
     )
 
-    df["song_rarity_score"] = normalize(
-        df["song_rarity_score"]
+    complete_df["song_rarity_score"] = normalize(
+        complete_df["song_rarity_score"]
     )
 
-    df["historian_score"] = (
-        df["show_length_score"] * 0.10
-        + df["set_complexity_score"] * 0.15
-        + df["segue_score"] * 0.20
-        + df["venue_importance_score"] * 0.20
-        + df["venue_rarity_score"] * 0.15
-        + df["song_rarity_score"] * 0.20
+    complete_df["historian_score"] = (
+        complete_df["show_length_score"] * 0.10
+        + complete_df["set_complexity_score"] * 0.15
+        + complete_df["segue_score"] * 0.20
+        + complete_df["venue_importance_score"] * 0.20
+        + complete_df["venue_rarity_score"] * 0.15
+        + complete_df["song_rarity_score"] * 0.20
     )
 
-    df = df.sort_values(
+    complete_df = complete_df.sort_values(
         "historian_score",
         ascending=False
     )
 
-    df["historian_rank"] = (
+    complete_df["historian_rank"] = (
         range(
             1,
-            len(df) + 1
+            len(complete_df) + 1
         )
     )
 
-    df["historian_percentile"] = (
+    complete_df["historian_percentile"] = (
         (
-            len(df)
-            - df["historian_rank"]
+            len(complete_df)
+            - complete_df["historian_rank"]
             + 1
         )
-        / len(df)
+        / len(complete_df)
     ) * 100
+
+    incomplete_df["show_length_score"] = None
+    incomplete_df["set_complexity_score"] = None
+    incomplete_df["segue_score"] = None
+    incomplete_df["venue_importance_score"] = None
+    incomplete_df["venue_rarity_score"] = None
+    incomplete_df["song_rarity_score"] = None
+    incomplete_df["historian_score"] = None
+    incomplete_df["historian_rank"] = None
+    incomplete_df["historian_percentile"] = None
+    incomplete_df["significance_status"] = "NOT_SCORED"
+
+    complete_df["significance_status"] = "SCORED"
+
+    df = pd.concat([complete_df, incomplete_df], ignore_index=True)
 
     output = df[
         [
             "show_uuid",
             "show_date",
+            "processing_status",
+            "dna_complete",
             "show_length_score",
             "set_complexity_score",
             "segue_score",
@@ -215,9 +229,15 @@ def main():
             "song_rarity_score",
             "historian_score",
             "historian_rank",
-            "historian_percentile"
+            "historian_percentile",
+            "significance_status"
         ]
     ]
+
+    con.register(
+        "show_historical_significance_df",
+        output
+    )
 
     con.execute(
         """
@@ -225,7 +245,7 @@ def main():
         show_historical_significance
         as
         select *
-        from output
+        from show_historical_significance_df
         """
     )
 
@@ -247,6 +267,8 @@ def main():
             """
             select
                 show_date,
+                processing_status,
+                significance_status,
                 historian_score,
                 historian_rank,
                 round(

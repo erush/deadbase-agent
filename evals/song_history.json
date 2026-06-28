@@ -1,40 +1,51 @@
-{
-  "skill": "song-history",
-  "cases": [
-    {
-      "case_id": "song_history_001",
-      "input": "When was Dark Star last played before Cornell 1977?",
-      "expected_skill": "song-history",
-      "expected_tools": ["find_song"],
-      "expected_output": [
-        "song_name",
-        "last_performance_date",
-        "venue",
-        "location",
-        "historical_context"
-      ]
-    },
-    {
-      "case_id": "song_history_002",
-      "input": "When was the first performance of Scarlet Begonias?",
-      "expected_skill": "song-history",
-      "expected_tools": ["find_song"],
-      "expected_output": [
-        "song_name",
-        "first_performance_date",
-        "venue"
-      ]
-    },
-    {
-      "case_id": "song_history_003",
-      "input": "How often was Dark Star played in 1972?",
-      "expected_skill": "song-history",
-      "expected_tools": ["find_song"],
-      "expected_output": [
-        "song_name",
-        "performance_count",
-        "year"
-      ]
-    }
-  ]
-}
+[
+  {
+    "name": "Dark Star history",
+    "question": "When was Dark Star last played before Cornell 1977?",
+    "expected_intent": "song_history",
+    "expected_skills": [
+      "song-history"
+    ],
+    "expected_mcp_tools": [
+      "deadbase_find_song"
+    ],
+    "expected_output": [
+      "song_name",
+      "last_performance_date",
+      "venue",
+      "historical_context"
+    ]
+  },
+  {
+    "name": "Scarlet Begonias first performance",
+    "question": "When was the first performance of Scarlet Begonias?",
+    "expected_intent": "song_history",
+    "expected_skills": [
+      "song-history"
+    ],
+    "expected_mcp_tools": [
+      "deadbase_find_song"
+    ],
+    "expected_output": [
+      "song_name",
+      "first_performance_date",
+      "venue"
+    ]
+  },
+  {
+    "name": "Dark Star in 1972",
+    "question": "How often was Dark Star played in 1972?",
+    "expected_intent": "song_history",
+    "expected_skills": [
+      "song-history"
+    ],
+    "expected_mcp_tools": [
+      "deadbase_find_song"
+    ],
+    "expected_output": [
+      "song_name",
+      "performance_count",
+      "year"
+    ]
+  }
+]

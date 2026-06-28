@@ -1,3 +1,16 @@
+"""
+
+Deprecated.
+
+Functionality has been consolidated into
+
+DeadBaseAgent as part of the Kaggle Agent
+
+Architecture refactor.
+
+See agents/deadbase_agent.py
+
+"""
 # agents/research_agent.py
 
 from pathlib import Path

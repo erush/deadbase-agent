@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import duckdb
 import re
+from dataclasses import dataclass, field
 
 
 ROOT = Path(__file__).resolve().parent
@@ -19,28 +20,65 @@ SHOW_DATE_CORNELL = "1977/05/08"
 DEFAULT_VENUE = "Barton Hall"
 DEFAULT_SONG = "Scarlet Begonias"
 
-from dataclasses import dataclass, field
 
 @dataclass
-class InvestigationContext:
+class InvestigationSession:
     question: str
     show_date: str
-
+    intent: str = ""
+    selected_skills: list[str] = field(default_factory=list)
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    execution_trace: list[str] = field(default_factory=list)
+    evidence: list[dict[str, Any]] = field(default_factory=list)
+    final_report: str = ""
     research_agent: Any = None
     historian_agent: Any = None
     venue_agent: Any = None
     song_agent: Any = None
     similarity_agent: Any = None
     synthesis_agent: Any = None
-
     historian: Any = None
     venue: Any = None
     song: Any = None
     similarity: Any = None
     research: Any = None
     synthesis: Any = None
-
     metadata: dict = field(default_factory=dict)
+    stage_results: dict[str, bool] = field(default_factory=dict)
+
+    def trace(self, event: str):
+        self.execution_trace.append(event)
+
+    def add_skill(self, skill: str):
+        if skill not in self.selected_skills:
+            self.selected_skills.append(skill)
+
+    def add_tool_call(
+        self,
+        tool: str,
+        arguments: dict[str, Any],
+    ):
+        self.tool_calls.append(
+            {
+                "tool": tool,
+                "arguments": arguments,
+            }
+        )
+
+    def add_evidence(
+        self,
+        source: str,
+        payload: Any,
+    ):
+        self.evidence.append(
+            {
+                "source": source,
+                "payload": payload,
+            }
+        )
+
+    def mark_stage(self, stage: str, success: bool = True):
+        self.stage_results[stage] = success
 
 def normalize_date(user_input: str, default: str = SHOW_DATE_CORNELL) -> str:
     raw = user_input.strip()
@@ -548,42 +586,6 @@ def load_synthesis_agent() -> Optional[Callable[..., Any]]:
         return None
 
 
-def load_skill(name: str) -> Optional[Callable[..., Any]]:
-    try:
-        if name == "show_lookup":
-            from skill_executors.show_lookup import execute
-
-            return execute
-
-        if name == "venue_profile":
-            from skill_executors.venue_profile import execute
-
-            return execute
-
-        if name == "song_history":
-            from skill_executors.song_history import execute
-
-            return execute
-
-        if name == "song_evolution":
-            from skill_executors.song_evolution import execute
-
-            return execute
-
-        if name == "show_recommender":
-            from skill_executors.show_recommender import execute
-
-            return execute
-
-        if name == "show_intelligence":
-            from skill_executors.show_intelligence import execute
-
-            return execute
-
-    except Exception as exc:
-        warn(f"Skill unavailable: {name} ({exc})")
-
-    return None
 
 
 
@@ -653,32 +655,49 @@ def print_song_summary(results: List[Any]) -> None:
             f"{str(fields['first']):>10}"
         )
 
-def run_research_stage(ctx: InvestigationContext):
-    ctx.research = None
-    if ctx.research_agent:
-        ctx.research = run_stage(
+def run_research_stage(session: InvestigationSession):
+    session.trace("Research Agent started")
+    session.research = None
+
+    if session.research_agent:
+        session.research = run_stage(
             "Research Agent",
             "Coordinating multi-agent investigation",
-            ctx.research_agent,
-            ctx.show_date,
+            session.research_agent,
+            session.show_date,
         )
+    # Observability: trace, skill, evidence
+    if session.research is not None:
+        session.trace("Research Agent completed")
+        if isinstance(session.research, dict):
+            session.add_evidence("research-agent", session.research)
+            session.historian = session.research
+        # Mark stage success for show-lookup if result exists
+        session.mark_stage("show-lookup", True)
+    else:
+        # Mark stage fail if no result
+        session.mark_stage("show-lookup", False)
 
-    if isinstance(ctx.research, dict):
-        ctx.historian = ctx.research
-
-def run_historian_stage(ctx: InvestigationContext):
+def run_historian_stage(session: InvestigationSession):
+    session.trace("Historian Agent started")
     section("Historian Agent")
     status("Analyzing historical significance")
 
-    if not isinstance(ctx.research, dict):
+    if not isinstance(session.research, dict):
+        session.trace("Historian Agent completed")
+        session.mark_stage("show-intelligence", False)
         return
 
-    rank = ctx.research.get("historian_rank")
-    total = ctx.research.get("total_shows", 1822)
-    percentile = ctx.research.get("historian_percentile")
-    score = ctx.research.get("historian_score")
-    archetype = ctx.research.get("primary_archetype")
+    rank = session.research.get("historian_rank")
+    total = session.research.get("total_shows", 1822)
+    percentile = session.research.get("historian_percentile")
+    score = session.research.get("historian_score")
+    archetype = session.research.get("primary_archetype")
 
+    has_result = any(
+        x is not None
+        for x in (score, rank, percentile, archetype)
+    )
     if score is not None:
         print(f"Historian Score     {score:.4f}")
     if rank is not None:
@@ -687,10 +706,12 @@ def run_historian_stage(ctx: InvestigationContext):
         print(f"Percentile          {percentile:.2f}%")
     if archetype:
         print(f"Primary Archetype   {archetype}")
+    session.trace("Historian Agent completed")
+    session.mark_stage("show-intelligence", has_result)
 
 # === Setlist Investigation Stage ===
-def run_setlist_stage(ctx: InvestigationContext):
-    show = ctx.metadata.get("show")
+def run_setlist_stage(session: InvestigationSession):
+    show = session.metadata.get("show")
     if not show:
         return
 
@@ -700,191 +721,315 @@ def run_setlist_stage(ctx: InvestigationContext):
     setlist = get_show_setlist(show["show_uuid"])
     print_setlist(setlist)
 
-def run_venue_stage(ctx: InvestigationContext):
-    ctx.venue = None
-    venue = DEFAULT_VENUE
-    show = ctx.metadata.get("show")
-    if show:
-        venue = show["venue"]
-    if ctx.venue_agent:
-        ctx.venue = run_stage(
-            "Venue Agent",
-            "Building venue profile",
-            ctx.venue_agent,
-            venue,
-        )
-    else:
-        venue_skill = load_skill("venue_profile")
-        if venue_skill:
-            ctx.venue = run_stage(
-                "Venue Skill",
-                "Building venue profile",
-                venue_skill,
-                venue,
-            )
+def run_venue_stage(session: InvestigationSession):
+    session.venue = None
+    entities = session.metadata.get("entities", {})
+    venue = entities.get("venue")
+    if not venue:
+        show = session.metadata.get("show")
+        if show:
+            venue = show["venue"]
+    # Observability: trace and tool call before agent/skill
+    session.trace("Venue Agent started")
+    session.add_tool_call("deadbase_find_venue", {"venue": venue})
+    if not session.venue_agent:
+        raise RuntimeError("Venue Agent unavailable.")
+
+    session.venue = run_stage(
+        "Venue Agent",
+        "Building venue profile",
+        session.venue_agent,
+        venue,
+    )
     # After obtaining the venue result, print the venue timeline, first/last/all performances
+    if isinstance(session.venue, dict):
+        session.add_evidence("venue-agent", session.venue)
+        session.trace("Venue Agent completed")
+        session.mark_stage("venue-analysis", True)
+    else:
+        session.mark_stage("venue-analysis", False)
     history = get_venue_history(venue)
     print_venue_history(history)
     # Do not print the venue agent preview/result
 
-def run_similarity_stage(ctx: InvestigationContext):
-    ctx.similarity = None
-    if ctx.similarity_agent:
-        ctx.similarity = run_stage(
-            "Similarity Agent",
-            "Searching for neighboring performances",
-            ctx.similarity_agent.analyze,
-            ctx.show_date,
-            top_n=5,
-        )
-        if ctx.similarity:
-            print_similarity_table(ctx.similarity)
-    else:
-        recommender = load_skill("show_recommender")
-        if recommender:
-            ctx.similarity = run_stage(
-                "Similarity Skill",
-                "Searching for neighboring performances",
-                recommender,
-                ctx.show_date,
-                top_n=5,
-            )
-            if ctx.similarity:
-                print_similarity_table(ctx.similarity)
+def run_similarity_stage(session: InvestigationSession):
+    session.similarity = None
+    # Observability: trace and tool call before similarity analysis
+    session.trace("Similarity Agent started")
+    session.add_tool_call("show_recommender", {"show_date": session.show_date, "top_n": 5})
+    if not session.similarity_agent:
+        raise RuntimeError("Similarity Agent unavailable.")
 
-def run_song_stage(ctx: InvestigationContext):
-    ctx.song = []
+    session.similarity = run_stage(
+        "Similarity Agent",
+        "Searching for neighboring performances",
+        session.similarity_agent.analyze,
+        session.show_date,
+        top_n=5,
+    )
+
+    if isinstance(session.similarity, dict):
+        session.add_evidence("similarity-agent", session.similarity)
+        session.trace("Similarity Agent completed")
+
+    if session.similarity:
+        print_similarity_table(session.similarity)
+
+    session.mark_stage("setlist-similarity", bool(session.similarity))
+
+def run_song_stage(session: InvestigationSession):
+    session.trace("Song Agent started")
+    session.song = []
     song_skill = None
-    # Evidence-driven: get show metadata if available
-    show = ctx.metadata.get("show")
+    show = session.metadata.get("show")
+
+    if not show:
+        warn("No show context available for song analysis.")
+        session.mark_stage("song-history", False)
+        return
+
+    setlist = get_show_setlist(show["show_uuid"])
+
     songs = []
-    if show:
-        setlist = get_show_setlist(show["show_uuid"])
-        # Build list of first five unique song names in setlist order
-        seen = set()
-        for song_entry in setlist:
-            name = song_entry["song_name"]
-            if name not in seen:
-                songs.append(name)
-                seen.add(name)
-            if len(songs) == 5:
-                break
-    else:
-        # Fallback to hard-coded list if no show metadata
-        songs = [
-            "Scarlet Begonias",
-            "Fire On The Mountain",
-            "Morning Dew",
-            "Saint Stephen",
-        ]
+    seen = set()
+
+    for performance in setlist:
+        song_name = performance["song_name"]
+
+        if song_name in seen:
+            continue
+
+        seen.add(song_name)
+        songs.append(song_name)
     # Print evidence-driven song list
     section("Songs Examined")
     for song in songs:
         print(f"- {song}")
     # Run agent/skill for these songs, do not print full reports
-    if ctx.song_agent:
-        for song in songs:
-            try:
-                result = ctx.song_agent(song)
-                if isinstance(result, dict):
-                    result.setdefault("song_name", song)
-                ctx.song.append(result)
-            except TypeError:
-                result = ctx.song_agent(song_name=song)
-                if isinstance(result, dict):
-                    result.setdefault("song_name", song)
-                ctx.song.append(result)
-            except Exception as exc:
-                warn(f"Song Agent failed for {song}: {exc}")
-    else:
-        song_skill = load_skill("song_history")
-        if song_skill:
-            for song in songs:
-                try:
-                    result = song_skill(song)
-                    if isinstance(result, dict):
-                        result.setdefault("song_name", song)
-                    ctx.song.append(result)
-                except Exception as exc:
-                    warn(f"Song skill failed for {song}: {exc}")
+    if not session.song_agent:
+        raise RuntimeError("Song Agent unavailable.")
+    for song in songs:
+        try:
+            result = session.song_agent(song)
+            if isinstance(result, dict):
+                result.setdefault("song_name", song)
+                session.add_evidence("song-agent", result)
+            session.song.append(result)
+        except TypeError:
+            result = session.song_agent(song_name=song)
+            if isinstance(result, dict):
+                result.setdefault("song_name", song)
+                session.add_evidence("song-agent", result)
+            session.song.append(result)
+        except Exception as exc:
+            warn(f"Song Agent failed for {song}: {exc}")
     # Print compact song summary at end of stage
-    print_song_summary(ctx.song)
+    print_song_summary(session.song)
+    session.trace("Song Agent completed")
+    # Mark stage as pass if we have at least one song result
+    session.mark_stage("song-history", bool(session.song))
 
-def run_synthesis_stage(ctx: InvestigationContext, research_result):
+def run_synthesis_stage(session: InvestigationSession, research_result):
+    session.trace("Synthesis Agent started")
     section("Synthesis Agent")
     status("Combining evidence")
     status("Synthesizing historical evidence")
     section("Historical Conclusion")
 
-    ctx.synthesis = None
-    if ctx.synthesis_agent:
-        result = ctx.synthesis_agent(ctx.research)
-        ctx.synthesis = result
-        print_full_result(ctx.synthesis)
-    else:
-        warn("No synthesis agent available for this investigation.")
+    session.synthesis = None
+    if not session.synthesis_agent:
+        raise RuntimeError("Synthesis Agent unavailable.")
+
+    result = session.synthesis_agent(session.research)
+    session.synthesis = result
+    if isinstance(result, dict):
+        session.final_report = result.get("answer", "")
+        session.add_evidence("synthesis-agent", result)
+        session.trace("Synthesis Agent completed")
+    print_full_result(session.synthesis)
+    session.mark_stage("synthesis", session.synthesis is not None)
 
 
 
 
 # === Context and Pipeline Helpers for Cornell Investigation ===
 
-def load_investigation_context(question: str, show_date: str) -> InvestigationContext:
-    ctx = InvestigationContext(
+def load_investigation_context(question: str, show_date: str) -> InvestigationSession:
+    session = InvestigationSession(
         question=question,
         show_date=show_date,
     )
-    ctx.research_agent = load_research_agent()
-    ctx.historian_agent = load_historian_agent()
-    ctx.venue_agent = load_venue_agent()
-    ctx.song_agent = load_song_agent()
-    ctx.similarity_agent = load_similarity_agent()
-    ctx.synthesis_agent = load_synthesis_agent()
+    session.research_agent = load_research_agent()
+    session.historian_agent = load_historian_agent()
+    session.venue_agent = load_venue_agent()
+    session.song_agent = load_song_agent()
+    session.similarity_agent = load_similarity_agent()
+    session.synthesis_agent = load_synthesis_agent()
 
-    show = get_show_record(show_date)
+    if show_date:
+        show = get_show_record(show_date)
+        if not show:
+            raise ValueError(f"Show not found in warehouse: {show_date}")
+        session.metadata["show"] = show
+    return session
 
-    if show:
-        ctx.metadata["show"] = show
-
-    return ctx
-
-def load_cornell_context() -> InvestigationContext:
+def load_cornell_context() -> InvestigationSession:
     return load_investigation_context(
         question="Was Cornell 1977 actually unique?",
         show_date=SHOW_DATE_CORNELL,
     )
 
-def run_cornell_pipeline(ctx: InvestigationContext) -> None:
-    run_investigation_pipeline(ctx)
+def run_cornell_pipeline(session: InvestigationSession) -> None:
+    run_investigation_pipeline(session)
 
 
 # === Generic Investigation Pipeline ===
-def run_investigation_pipeline(ctx: InvestigationContext) -> None:
-    run_research_stage(ctx)
-    run_historian_stage(ctx)
-    run_setlist_stage(ctx)
-    run_venue_stage(ctx)
-    run_similarity_stage(ctx)
-    run_song_stage(ctx)
-    run_synthesis_stage(ctx, ctx.research)
+def run_investigation_pipeline(session: InvestigationSession) -> None:
+    plan = session.metadata.get("plan", {})
+    skills = plan.get("skills", [])
+
+    if not skills:
+        raise RuntimeError(
+            "Planning Agent did not produce a workflow. Investigation cannot continue."
+        )
+
+    skill_handlers = {
+        "show-lookup": run_research_stage,
+        "show-intelligence": run_historian_stage,
+        "venue-analysis": run_venue_stage,
+        "setlist-analysis": run_setlist_stage,
+        "setlist-similarity": run_similarity_stage,
+        "song-history": run_song_stage,
+        "synthesis": lambda s: run_synthesis_stage(s, s.research),
+    }
+
+    for skill in skills:
+        print(f"Dispatching Skill: {skill}")
+
+        handler = skill_handlers.get(skill)
+
+        if handler is None:
+            warn(f"No executor registered for skill: {skill}")
+            session.mark_stage(skill, False)
+            continue
+
+        handler(session)
+        print(f"✓ Completed: {skill}")
 
 
 # === Generic Presentation for Investigation Completion ===
-def present_investigation(ctx: InvestigationContext):
+def present_investigation(session: InvestigationSession):
     print()
     line("=")
     print("Historical Investigation Complete".center(78))
-    print("6 agents successfully orchestrated.".center(78))
-    print("Evidence fused into a single historical assessment.".center(78))
+    line("=")
+
+    # Section: Investigation
+    section("Investigation")
+    print(f"Question: {session.question}")
+    print(f"Intent: {session.intent}")
+
+    # Section: Planning
+    section("Planning")
+    planned_skills = ", ".join(session.selected_skills) if session.selected_skills else "None"
+    planned_tools = ", ".join(session.metadata.get("mcp_tools", [])) if session.metadata.get("mcp_tools") else "None"
+    print(f"Planned Skills: {planned_skills}")
+    print(f"Planned MCP Tools: {planned_tools}")
+
+    # Section: Execution Metrics
+    section("Execution Metrics")
+    print(f"Skills Executed: {len(session.selected_skills)}")
+    print(f"MCP Tool Calls: {len(session.tool_calls)}")
+    print(f"Evidence Objects: {len(session.evidence)}")
+    print(f"Execution Trace Events: {len(session.execution_trace)}")
+    print(f"Historical Report Generated: {'Yes' if getattr(session, 'synthesis', None) else 'No'}")
+
+    # Section: Evaluation
+    section("Evaluation")
+    # For every planned skill, print pass/fail based on session.stage_results
+    skill_names = session.selected_skills
+    # Map canonical skill names to stage keys
+    
+    overall_pass = True
+    for skill in skill_names:
+        passed = session.stage_results.get(skill, False)
+        status_icon = "✓" if passed else "✗"
+        status_word = "PASS" if passed else "FAIL"
+        print(f"{status_icon} {skill} {status_word}")
+        if not passed:
+            overall_pass = False
+    print()
+    print(f"Overall Evaluation: {'PASS' if overall_pass else 'FAIL'}")
+
+    # Section: Tool Calls
+    section("Tool Calls")
+    if session.tool_calls:
+        for call in session.tool_calls:
+            tool = call.get("tool", "unknown")
+            arguments = call.get("arguments", {})
+            print(f"- {tool} {arguments}")
+    else:
+        print("None")
+
+    # Section: Execution Trace
+    section("Execution Trace")
+    if session.execution_trace:
+        for event in session.execution_trace:
+            print(event)
+    else:
+        print("None")
+
+    # Section: Evidence Sources
+    section("Evidence Sources")
+    if session.evidence:
+        sources = set()
+        for e in session.evidence:
+            src = e.get("source")
+            if src is not None:
+                sources.add(src)
+        if sources:
+            for src in sorted(sources):
+                print(src)
+        else:
+            print("None")
+    else:
+        print("None")
     line("=")
 
 
-def run_planning_stage(ctx: InvestigationContext) -> None:
-    section("Planning Agent")
-    status("Building historical investigation plan")
-    status(f"Selected target show: {display_date(ctx.show_date)}")
-    status("Selected evidence sources: historian, venue, song, similarity")
-    status("Routing investigation to specialist agents")
+def run_planning_stage(session: InvestigationSession) -> None:
+    from agents.deadbase_agent import DeadBaseAgent
+    planner = DeadBaseAgent()
+    plan = planner.plan(session.question)
+    session.metadata["entities"] = plan.get("entities", {})
+    if not plan.get("skills"):
+        raise RuntimeError(
+            f"Planning Agent could not determine a workflow for: {session.question}"
+        )
+    session.metadata["plan"] = plan
+    session.metadata["mcp_tools"] = plan.get("mcp_tools", [])
+    session.intent = plan.get("intent", "")
+    # Clear existing selected skills if any
+    session.selected_skills.clear()
+    for skill in plan.get("skills", []):
+        session.add_skill(skill)
+    session.trace("Planning complete")
+    print()
+    print("Planning Agent")
+    line("-")
+    print(f"Question: {session.question}")
+    print(f"Intent: {session.intent}")
+    print()
+    print("Selected Skills")
+    for skill in session.selected_skills:
+        print(f"✓ {skill}")
+    print()
+    print("MCP Tools")
+    for tool in session.metadata["mcp_tools"]:
+        print(f"✓ {tool}")
+    print()
+    print("Investigation Session Created")
+    print("Execution Trace Started")
 
 def run_cornell_investigation() -> None:
     clear_screen()
@@ -893,12 +1038,12 @@ def run_cornell_investigation() -> None:
     print("Question: Was Cornell 1977 actually unique?")
     print()
 
-    ctx = load_cornell_context()
+    session = load_cornell_context()
     start = time.perf_counter()
 
-    run_planning_stage(ctx)
-    run_cornell_pipeline(ctx)
-    present_investigation(ctx)
+    run_planning_stage(session)
+    run_cornell_pipeline(session)
+    present_investigation(session)
 
     elapsed = time.perf_counter() - start
     line("-")
@@ -1061,34 +1206,27 @@ def run_show_lookup() -> None:
         input("\nPress Enter to return to menu...")
         return
 
-    skill = load_skill("show_lookup")
-
-    if not skill:
-        warn("Show lookup skill unavailable")
-        input("\nPress Enter to return to menu...")
-        return
+    agent = load_research_agent()
+    if not agent:
+        raise RuntimeError("Research Agent unavailable.")
 
     try:
-        result = skill(show_date)
+        result = agent(show_date)
     except TypeError:
-        result = skill(show_date=show_date)
+        result = agent(show_date=show_date)
 
     print_show_summary(show)
 
     section("Setlist")
-
     setlist = get_show_setlist(show["show_uuid"])
-
     print_setlist(setlist)
 
     section("Historical Summary")
-
     print_full_result(result)
 
     input("\nPress Enter to return to menu...")
     
 def run_venue_profile() -> None:
-
     clear_screen()
     title("EXPLORE VENUE")
 
@@ -1104,7 +1242,6 @@ def run_venue_profile() -> None:
         return
 
     section("Venue Summary")
-
     print(f"Venue:      {venue}")
     print(f"Location:   {history[0]['city']}, {history[0]['state']}")
     print(f"Country:    {history[0]['country']}")
@@ -1112,23 +1249,14 @@ def run_venue_profile() -> None:
     print_venue_history(history)
 
     agent = load_venue_agent()
-    skill = load_skill("venue_profile")
+    if not agent:
+        raise RuntimeError("Venue Agent unavailable.")
 
     try:
-
-        if agent:
-            result = agent(venue)
-        elif skill:
-            result = skill(venue)
-        else:
-            result = None
-
+        result = agent(venue)
         if result:
-
             section("Historical Analysis")
-
             print_full_result(result)
-
     except Exception as exc:
         warn(f"Venue analysis failed: {exc}")
 
@@ -1141,18 +1269,10 @@ def run_song_evolution() -> None:
     song = input("Enter song [Scarlet Begonias]: ").strip() or DEFAULT_SONG
 
     agent = load_song_evolution_agent()
-    skill = load_skill("song_evolution")
-
+    if not agent:
+        raise RuntimeError("Song Evolution Agent unavailable.")
     try:
-        if agent:
-            result = agent(song)
-        elif skill:
-            result = skill(song)
-        else:
-            warn("Song Evolution Agent / skill unavailable")
-            input("\nPress Enter to return to menu...")
-            return
-
+        result = agent(song)
         section("Song Evolution Analysis")
         print_full_result(result)
     except Exception as exc:
@@ -1162,7 +1282,6 @@ def run_song_evolution() -> None:
 
 
 def run_similarity_search() -> None:
-
     clear_screen()
     title("DISCOVER SIMILAR SHOWS")
 
@@ -1176,25 +1295,13 @@ def run_similarity_search() -> None:
         return
 
     agent = load_similarity_agent()
-    skill = load_skill("show_recommender")
-
+    if not agent:
+        raise RuntimeError("Similarity Agent unavailable.")
     try:
-
-        if agent:
-            result = agent.analyze(show_date, top_n=10)
-        elif skill:
-            result = skill(show_date, top_n=10)
-        else:
-            warn("Similarity Agent unavailable")
-            input("\nPress Enter to return to menu...")
-            return
-
+        result = agent.analyze(show_date, top_n=10)
         section("Search Summary")
-
         print(f"Reference Show : {display_date(show_date)}")
-
         print_similarity_table(result)
-
     except Exception as exc:
         warn(f"Similarity search failed: {exc}")
 
@@ -1214,23 +1321,17 @@ def run_research_agent_custom() -> None:
         input("\nPress Enter to return to menu...")
         return
 
-    show = get_show_record(show_date)
 
-    if not show:
-        warn(f"No show found for {display_date(show_date)}.")
-        input("\nPress Enter to return to menu...")
-        return
-
-    ctx = load_investigation_context(
+    session = load_investigation_context(
         question=f"Historical investigation for {display_date(show_date)}",
         show_date=show_date,
     )
     try:
         start = time.perf_counter()
         
-        run_planning_stage(ctx)
-        run_investigation_pipeline(ctx)
-        present_investigation(ctx)
+        run_planning_stage(session)
+        run_investigation_pipeline(session)
+        present_investigation(session)
 
         elapsed = time.perf_counter() - start
         line("-")
@@ -1248,9 +1349,9 @@ def run_research_agent_custom() -> None:
 def print_menu() -> None:
     clear_screen()
     title("DEADBASE")
-    print("Multi-Agent Historical Intelligence Demo".center(78))
+    print("Multi-Agent Historical Intelligence Platform".center(78))
     print()
-    print("Available Historical Investigations")
+    print("Available Intelligence Workflows")
     print()
     print("1. Cornell 5/8/77 Investigation")
     print("2. Explore Show")

@@ -1,37 +1,49 @@
-{
-  "skill": "venue-analysis",
-  "cases": [
-    {
-      "case_id": "venue_profile_001",
-      "input": "Which venue hosted the most Grateful Dead shows?",
-      "expected_skill": "venue-analysis",
-      "expected_tools": ["find_venue"],
-      "expected_output": [
-        "venue",
-        "show_count",
-        "historical_context"
-      ]
-    },
-    {
-      "case_id": "venue_profile_002",
-      "input": "Tell me about Winterland",
-      "expected_skill": "venue-analysis",
-      "expected_tools": ["find_venue"],
-      "expected_output": [
-        "venue",
-        "show_count",
-        "years_active"
-      ]
-    },
-    {
-      "case_id": "venue_profile_003",
-      "input": "What songs were most commonly played at Winterland?",
-      "expected_skill": "venue-analysis",
-      "expected_tools": ["find_venue"],
-      "expected_output": [
-        "venue",
-        "top_songs"
-      ]
-    }
-  ]
-}
+[
+  {
+    "name": "Most played venue",
+    "question": "Which venue hosted the most Grateful Dead shows?",
+    "expected_intent": "venue_analysis",
+    "expected_skills": [
+      "venue-analysis"
+    ],
+    "expected_mcp_tools": [
+      "deadbase_find_venue"
+    ],
+    "expected_output": [
+      "venue",
+      "show_count",
+      "historical_context"
+    ]
+  },
+  {
+    "name": "Winterland profile",
+    "question": "Tell me about Winterland",
+    "expected_intent": "venue_analysis",
+    "expected_skills": [
+      "venue-analysis"
+    ],
+    "expected_mcp_tools": [
+      "deadbase_find_venue"
+    ],
+    "expected_output": [
+      "venue",
+      "show_count",
+      "years_active"
+    ]
+  },
+  {
+    "name": "Winterland repertoire",
+    "question": "What songs were most commonly played at Winterland?",
+    "expected_intent": "venue_analysis",
+    "expected_skills": [
+      "venue-analysis"
+    ],
+    "expected_mcp_tools": [
+      "deadbase_find_venue"
+    ],
+    "expected_output": [
+      "venue",
+      "top_songs"
+    ]
+  }
+]

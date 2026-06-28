@@ -97,37 +97,42 @@ def main():
         """
     ).df()
 
+    # Split into complete and incomplete DataFrames
+    complete_df = df[df["processing_status"] == "COMPLETE"].copy()
+    incomplete_df = df[df["processing_status"] == "INSUFFICIENT_DATA"].copy()
+
+    # Compute thresholds from complete_df only
     thresholds = {
         "segue": percentile(
-            df["segue_score"],
+            complete_df["segue_score"],
             0.90
         ),
         "length": percentile(
-            df["show_length_score"],
+            complete_df["show_length_score"],
             0.90
         ),
         "rarity": percentile(
-            df["song_rarity_score"],
+            complete_df["song_rarity_score"],
             0.90
         ),
         "venue": percentile(
-            df["venue_importance_score"],
+            complete_df["venue_importance_score"],
             0.90
         ),
         "sets": percentile(
-            df["set_complexity_score"],
+            complete_df["set_complexity_score"],
             0.90
         ),
         "historian": percentile(
-            df["historian_score"],
+            complete_df["historian_score"],
             0.90
         ),
     }
 
     archetypes = []
 
-    for _, row in df.iterrows():
-
+    # Build archetypes for complete_df only
+    for _, row in complete_df.iterrows():
         primary = assign_primary(
             row,
             thresholds
@@ -145,15 +150,37 @@ def main():
                 "show_date": row["show_date"],
                 "primary_archetype": primary,
                 "secondary_archetype": secondary,
-                "historian_score": row[
-                    "historian_score"
-                ],
+                "historian_score": row["historian_score"],
+                "processing_status": row["processing_status"],
+                "dna_complete": row["dna_complete"],
+                "archetype_status": "CLASSIFIED",
             }
         )
 
-    archetypes_df = pd.DataFrame(
-        archetypes
-    )
+    archetypes_df = pd.DataFrame(archetypes)
+
+    # Build DataFrame for incomplete rows
+    if not incomplete_df.empty:
+        incomplete_rows = []
+        for _, row in incomplete_df.iterrows():
+            incomplete_rows.append(
+                {
+                    "show_uuid": row["show_uuid"],
+                    "show_date": row["show_date"],
+                    "processing_status": row["processing_status"],
+                    "dna_complete": row["dna_complete"],
+                    "primary_archetype": None,
+                    "secondary_archetype": None,
+                    "historian_score": None,
+                    "archetype_status": "NOT_CLASSIFIED",
+                }
+            )
+        incomplete_archetypes_df = pd.DataFrame(incomplete_rows)
+        # Concatenate complete and incomplete archetypes
+        archetypes_df = pd.concat([archetypes_df, incomplete_archetypes_df], ignore_index=True)
+
+    # Register DataFrame before creating table
+    con.register("archetypes_df", archetypes_df)
 
     con.execute(
         """

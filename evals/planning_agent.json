@@ -1,0 +1,33 @@
+
+
+[
+  {
+    "name": "Historical show investigation",
+    "question": "Was Cornell 1977 actually unique?",
+    "expected_intent": "historical_show_investigation",
+    "expected_skills": [
+      "show-lookup",
+      "show-intelligence",
+      "venue-analysis",
+      "setlist-similarity",
+      "song-history",
+      "synthesis"
+    ]
+  },
+  {
+    "name": "Song history",
+    "question": "When was Dark Star first played?",
+    "expected_intent": "song_history",
+    "expected_skills": [
+      "song-history"
+    ]
+  },
+  {
+    "name": "Venue analysis",
+    "question": "Tell me about Winterland.",
+    "expected_intent": "venue_analysis",
+    "expected_skills": [
+      "venue-analysis"
+    ]
+  }
+]

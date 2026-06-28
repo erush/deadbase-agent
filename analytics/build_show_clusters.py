@@ -37,7 +37,9 @@ def main():
         """
     ).df()
 
-    features = df[
+    cluster_df = df[df["dna_complete"] == True].copy() if "dna_complete" in df.columns else df.dropna(subset=["show_length","set_count","segue_ratio","historian_score"]).copy()
+
+    features = cluster_df[
         [
             "show_length",
             "set_count",
@@ -56,19 +58,24 @@ def main():
         n_init=20,
     )
 
-    df["cluster_id"] = model.fit_predict(X)
+    cluster_df["cluster_id"] = model.fit_predict(X)
 
-    show_clusters = df[
-        [
-            "show_uuid",
-            "show_date",
-            "era",
-            "cluster_id",
-        ]
-    ].copy()
+    show_clusters = df[["show_uuid","show_date","era"]].copy()
+    show_clusters = show_clusters.merge(
+        cluster_df[["show_uuid","cluster_id"]],
+        on="show_uuid",
+        how="left"
+    )
+    show_clusters["processing_status"] = show_clusters["cluster_id"].apply(
+        lambda x: "COMPLETE" if pd.notna(x) else "INSUFFICIENT_DATA"
+    )
+
+    show_clusters["cluster_status"] = show_clusters["cluster_id"].apply(
+        lambda x: "CLUSTERED" if pd.notna(x) else "NOT_CLUSTERED"
+    )
 
     cluster_profiles = (
-        df.groupby("cluster_id")
+        cluster_df.groupby("cluster_id")
         .agg(
             cluster_size=(
                 "show_uuid",
@@ -96,7 +103,7 @@ def main():
 
     dominant_eras = []
 
-    for cluster_id, group in df.groupby(
+    for cluster_id, group in cluster_df.groupby(
         "cluster_id"
     ):
 
@@ -182,6 +189,13 @@ def main():
         from cluster_profiles_df
         """
     )
+
+    clustered = (show_clusters["cluster_status"] == "CLUSTERED").sum()
+    insufficient = (show_clusters["processing_status"] == "INSUFFICIENT_DATA").sum()
+
+    print()
+    print(f"Clustered shows={clustered}")
+    print(f"Insufficient data={insufficient}")
 
     print()
     print(

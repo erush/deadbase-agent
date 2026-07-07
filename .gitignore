@@ -62,3 +62,34 @@ settings.local.*
 
 # OS Files
 Thumbs.db
+
+__pycache__/
+*.py[cod]
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Local development
+app.py
+deadbase.py
+
+# Development-only scripts
+scripts/explore_schema.py
+scripts/test_agent.py
+scripts/test_agent_v2.py
+scripts/test_historian_agent.py
+scripts/test_research_agent.py
+scripts/test_setlist_similarity.py
+scripts/test_show_lookup_skill.py
+scripts/test_show_recommender.py
+scripts/test_song_evolution.py
+scripts/test_song_evolution_agent.py
+scripts/test_song_history_skill.py
+
+# Empty placeholder tests
+tests/

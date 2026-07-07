@@ -1,440 +1,529 @@
-# DeadBase: Multi-Agent Historical Intelligence for the Grateful Dead Archive
+# DeadBase: Explainable Multi-Agent Historical Intelligence
 
-## Overview
+## What is DeadBase?
 
-DeadBase is a multi-agent historical intelligence platform built on top of the Grateful Dead performance archive.
+DeadBase is not a chatbot.
 
-Traditional archive tools focus on retrieval:
+It is a specification-driven historical intelligence system that conducts structured investigations over the Grateful Dead archive.
 
-- Find a show
-- Find a song
-- Find a venue
-- Find a date
+Traditional archive tools retrieve records.
 
-DeadBase takes a different approach.
+DeadBase plans investigations.
 
-The system attempts to discover historical structure within the archive through analytics engineering, feature generation, and agent-based investigation.
+Specialized agents gather structured evidence from an analytical warehouse, synthesize findings, and produce explainable historical reports.
 
-Rather than simply retrieving information, DeadBase attempts to answer questions such as:
-
-- Why is a show historically important?
-- What family of shows does it belong to?
-- Which songs defined an era?
-- How unique was a performance?
-- What explains the reputation of a legendary show?
+Although demonstrated using the Grateful Dead archive, the architecture is domain independent and designed for any historical intelligence problem.
 
 ---
 
-## Kaggle AI Agents Capstone
+## Why DeadBase?
 
-DeadBase was developed as a submission for the Kaggle Vibe Coding Agents Capstone.
+Most AI applications retrieve documents and generate summaries.
 
-The project demonstrates how analytics engineering, feature generation, and multi-agent reasoning can be combined to investigate large historical archives.
+DeadBase demonstrates a different approach.
 
-Rather than functioning as a traditional search tool, DeadBase uses specialized agents to perform explainable historical investigations.
+Every research question becomes a structured historical investigation.
+
+Instead of relying on a single LLM prompt, DeadBase:
+
+- plans an investigation
+- dynamically selects specialized skills
+- orchestrates multiple research agents
+- gathers structured evidence
+- synthesizes explainable findings
+- evaluates the completed investigation
+
+Every investigation follows the same repeatable engineering workflow:
+
+```text
+Specification
+      ↓
+Planning
+      ↓
+Skill Selection
+      ↓
+Agent Orchestration
+      ↓
+Evidence Collection
+      ↓
+Historical Synthesis
+      ↓
+Evaluation
+```
+
+The result is a transparent, reproducible historical intelligence system rather than a traditional retrieval-based chatbot.
 
 ---
 
-## Problem
+# Kaggle AI Agents Capstone
+
+DeadBase was developed as a submission for the Kaggle AI Agents Capstone.
+
+The project demonstrates an end-to-end AI agent architecture featuring:
+
+- Planning Agent
+- Investigation Session
+- Dynamic Skill Planning
+- Multi-Agent Orchestration
+- MCP Tool Integration
+- Evidence Collection
+- Research Synthesis
+- Automated Evaluation
+
+The repository follows a specification-driven development approach in which every investigation is planned before execution, dynamically orchestrated through specialized agents, and evaluated upon completion rather than relying on hard-coded workflows.
+
+---
+
+## AI Agents Intensive Course Alignment
+
+DeadBase was intentionally designed to demonstrate the core engineering principles taught throughout the Google/Kaggle 5-Day AI Agents Intensive.
+
+Rather than showcasing isolated AI capabilities, the project integrates modern agent engineering concepts into a complete end-to-end historical intelligence platform.
+
+| Google/Kaggle AI Agents Intensive | DeadBase Implementation |
+|-----------------------------------|-------------------------|
+| **Planning Before Execution** | Planning Agent creates an investigation plan before any research begins |
+| **Multi-Agent Systems** | Specialized Research, Historian, Venue, Song, Similarity, Evolution, and Synthesis agents collaborate to solve complex investigations |
+| **Dynamic Skills** | Skills are selected and dispatched dynamically based on the investigation objective rather than following hard-coded workflows |
+| **Tool Use & Interoperability** | Model Context Protocol (MCP) exposes analytical capabilities as reusable agent tools |
+| **Context Engineering** | Structured Investigation Sessions preserve execution state, evidence, and reasoning throughout the research lifecycle |
+| **Explainability** | Every investigation records evidence, execution traces, intermediate findings, and synthesized conclusions |
+| **Evaluation** | Completed investigations automatically validate planned skills, executed skills, tool usage, execution traces, evidence objects, and overall pipeline success |
+| **Production-Oriented AI Engineering** | DuckDB analytics warehouse, specification-driven architecture, modular agents, and deterministic analytical pipelines support reproducible investigations |
+
+DeadBase demonstrates how the concepts introduced throughout the AI Agents Intensive can be combined into a reusable architecture for explainable, evidence-driven AI systems rather than isolated demonstrations of individual techniques.
+
+---
+
+# Problem
 
 The Grateful Dead archive contains:
 
-- 1,822 unique performances
+- 2,308 performances
 - 35,000+ song performances
-- 445 unique songs
-- 434 venues
+- 446 songs
+- 592 venues
 
-While the archive is rich with information, historical investigation remains difficult.
-
-Researchers often rely on:
-
-- Manual searches
-- Community reputation
-- Anecdotal evidence
-- Personal knowledge
+Although the archive contains decades of information, historical investigation still relies heavily on manual research and community knowledge.
 
 Most archive tools answer:
 
-"What happened?"
+> What happened?
 
 DeadBase attempts to answer:
 
-"Why did it matter?"
+> Why did it matter?
 
 ---
 
-## Quick Start
-
-Run the primary demonstration:
-
-```bash
-python -m scripts.cornell_investigation_demo
-```
-
-This performs a complete multi-agent investigation of the Grateful Dead's legendary Cornell University performance on May 8, 1977.
-
-The investigation combines:
-
-- Historian Agent
-- Venue Agent
-- Song Agent
-- Similarity Agent
-- Research Agent
-- Synthesis Agent
-
-to generate an evidence-based historical assessment.
-
----
-
-## Architecture
+# System Architecture
 
 ```text
-Archive Data
-    ↓
-DuckDB Warehouse
-    ↓
-Analytics Layer
-    ↓
-Skill Executors
-    ↓
-Agent Layer
-    ↓
-Research Synthesis
+User Question
+        │
+        ▼
+Planning Agent
+        │
+        ▼
+Investigation Session
+        │
+        ▼
+Dynamic Skill Planning
+        │
+        ▼
+Research Agents
+        │
+        ▼
+Evidence Collection
+        │
+        ▼
+Synthesis Agent
+        │
+        ▼
+Evaluation
 ```
 
-### Data Warehouse
+Every investigation follows this architecture regardless of the research question.
 
-DuckDB powers the archive warehouse.
+---
+# Performance & Execution
 
-Core entities:
+DeadBase executes entirely against a local DuckDB warehouse and locally generated analytical feature sets. The Planning Agent orchestrates deterministic Python skills and analytical queries rather than relying on multiple sequential calls to external LLM APIs.
 
-- shows
-- performances
-- songs
-- venues
+As a result, a complete multi-agent historical investigation executes in approximately 2–3 seconds on local hardware.
 
-The public repository intentionally excludes the raw archive data and generated DuckDB warehouse.
+The demonstration video reflects actual runtime execution. Agent orchestration, evidence collection, synthesis, and evaluation are performed live during the investigation.
 
 ---
 
-### Analytics Layer
+# Investigation Pipeline
 
-DeadBase generates analytical datasets that transform raw archive records into historical intelligence.
+Each investigation proceeds through seven stages.
 
-#### song_profile
+## 1. Planning
 
-Song lifecycle information.
+The Planning Agent analyzes the user's question and determines:
 
-Metrics include:
+- investigation intent
+- required skills
+- entities
+- MCP tools
+- execution plan
 
-- performance count
-- first appearance
-- final appearance
-- peak year
-- active years
+Example
 
-#### song_evolution
+Question:
 
-Models song careers.
+> Was Cornell 1977 actually unique?
 
-Metrics include:
+The planner produces:
 
-- historical tier
-- career pattern
-- longevity score
-- peak concentration
+- show-lookup
+- show-intelligence
+- venue-analysis
+- setlist-similarity
+- song-history
+- synthesis
 
-Examples:
+before any research agent executes.
 
-- Cornerstone Songs
-- Core Repertoire
-- Important Rotation
-- Rare Songs
+---
 
-#### show_dna
+## 2. Investigation Session
 
-Structural characteristics of every performance.
+Each investigation creates a structured session object that records the complete lifecycle of the research process.
 
-Metrics include:
+The session stores:
 
-- show length
-- set count
-- segue ratio
-- repertoire structure
+- question
+- intent
+- selected skills
+- tool calls
+- execution trace
+- evidence
+- stage evaluation
+- synthesized report
 
-#### venue_profile
+This provides complete observability throughout the investigation.
+
+---
+
+## 3. Dynamic Skill Dispatch
+
+The execution pipeline is not hard coded for a single investigation.
+
+Instead, the Planning Agent selects skills dynamically and the pipeline dispatches the appropriate research agents.
+
+Example workflow:
+
+```text
+Planning Agent
+
+↓
+
+show-lookup
+
+↓
+
+Research Agent
+
+↓
+
+venue-analysis
+
+↓
+
+Venue Agent
+
+↓
+
+song-history
+
+↓
+
+Song Agent
+```
+
+This architecture allows different questions to execute different research pipelines.
+
+---
+
+## 4. Research Agents
+
+DeadBase contains specialized historical research agents.
+
+### Research Agent
+
+Coordinates historical archive investigation.
+
+### Historian Agent
+
+Measures historical significance using archive analytics.
+
+### Venue Agent
+
+Builds historical venue profiles.
+
+### Song Agent
+
+Analyzes historical song information.
+
+### Similarity Agent
+
+Finds historically similar performances.
+
+### Song Evolution Agent
+
+Models song careers across the archive.
+
+### Synthesis Agent
+
+Combines evidence from multiple agents into a single explainable historical report.
+
+---
+
+## 5. Evidence Collection
+
+Rather than returning isolated answers, every investigation records evidence.
+
+Evidence includes:
+
+- historical rankings
+- similarity analysis
+- venue intelligence
+- song intelligence
+- synthesis output
+
+The evidence collection layer makes every investigation explainable and reproducible.
+
+---
+
+## 6. Evaluation
+
+Each completed investigation automatically evaluates:
+
+- planned skills
+- executed skills
+- tool calls
+- execution trace
+- evidence objects
+- overall pipeline success
+
+## Current Evaluation Coverage
+
+- Planning validation
+- Skill selection validation
+- Tool execution validation
+- Evidence validation
+- Pipeline validation
+- Overall investigation success
+
+Every completed investigation concludes with an automated evaluation summary that verifies successful execution of the complete investigation pipeline.
+
+---
+
+# Analytics Layer
+
+DeadBase transforms raw archive data into analytical intelligence.
+
+Generated datasets include:
+
+## show_dna
+
+Structural characteristics for every performance.
+
+## song_profile
+
+Historical lifecycle statistics for every song.
+
+## song_evolution
+
+Song career modeling.
+
+## venue_profile
 
 Historical venue intelligence.
 
-Metrics include:
+## venue_rankings
 
-- show count
-- active years
-- average show length
-- average segue ratio
+Venue importance rankings.
 
-#### venue_rankings
+## show_embeddings
 
-Ranks venues by:
+Feature vectors used for similarity analysis.
 
-- importance
-- rarity
-- historical footprint
+## show_historical_significance
 
-#### show_embeddings
-
-Transforms shows into analytical feature vectors.
-
-Features include:
-
-- era
-- show length
-- set complexity
-- segue behavior
-- venue importance
-- historical significance
-
-#### show_historical_significance
-
-Ranks every show in the archive.
+Historical scoring model for every performance.
 
 Produces:
 
 - historian score
-- historian rank
-- historian percentile
+- archive rank
+- percentile
 
-#### show_archetypes
+## show_archetypes
 
-Classifies performances into historical categories.
+Automatically classifies performances into historical categories.
 
-Examples:
+Examples include:
 
-- Marathon Show
-- High Segue Show
-- Venue Landmark Show
-- Rare Song Show
 - Complex Set Structure
+- Marathon Show
+- Rare Song Show
+- Venue Landmark Show
 
-#### show_clusters
+## show_clusters
 
-Groups performances into broader analytical families using machine learning and shared historical characteristics.
+Machine-learning grouping of historically similar performances.
 
 ---
 
-## Agent Layer
+# Example Investigation
 
-### Similarity Agent
+Question:
 
-Identifies neighboring performances based on repertoire overlap and analytical similarity.
+> Was Cornell 1977 actually unique?
 
-Example:
+The Planning Agent selected:
 
-"What shows are most similar to Cornell 1977?"
+- show-lookup
+- show-intelligence
+- venue-analysis
+- setlist-similarity
+- song-history
+- synthesis
 
-### Venue Agent
+The investigation then produced:
 
-Investigates venue history and historical significance.
-
-Example:
-
-"What role did Barton Hall play in Grateful Dead history?"
-
-### Song Agent
-
-Provides song-level archive intelligence.
-
-Example:
-
-"When did Saint Stephen first appear?"
-
-### Song Evolution Agent
-
-Models song lifecycles across the archive.
-
-Example:
-
-"How did Dark Star evolve across the band's career?"
-
-### Historian Agent
-
-Combines multiple analytical signals into a historical profile.
-
-Example:
-
-"Why was Cornell 1977 important?"
-
-### Research Agent
-
-Performs multi-agent investigations.
-
-Combines:
-
-- historian analysis
-- venue intelligence
+- historical ranking
+- archetype classification
+- venue analysis
+- neighboring performances
 - song intelligence
-- similarity analysis
-- analytical rankings
-- research synthesis
+- evidence-based historical synthesis
 
-to generate evidence-based historical narratives.
+Final conclusion:
 
----
-
-## Example Investigation
-
-### Cornell — 1977/05/08
-
-DeadBase investigated Cornell using:
-
-- Historical significance rankings
-- Show archetypes
-- Venue analysis
-- Song evolution
-- Similarity analysis
-
-Findings:
-
-- Cornell ranks in the 79th percentile of archive performances.
-- The show belongs to the Complex Set Structure archetype.
-- Barton Hall hosted only three Grateful Dead performances.
-- Several Spring 1977 shows display highly similar repertoire.
-- The archive does not support the claim that Cornell's significance is driven solely by setlist uniqueness.
-
-DeadBase suggests that Cornell's reputation emerges from a combination of:
-
-- strong Spring 1977 repertoire
-- venue mythology
-- tape circulation
-- listener consensus
-- performance quality
-- long-term cultural memory
+Cornell is historically significant, but its reputation cannot be explained by setlist uniqueness alone. The investigation shows that cultural reputation extends beyond measurable archive signals, incorporating performance quality, listener consensus, tape circulation, and historical memory.
 
 ---
 
-## Results
+# Repository Structure
 
-DeadBase currently models:
+```text
+agents/
+analytics/
+docs/
+evals/
+mcp_server/
+scripts/
+session/
+specs/
+tests/
+tools/
+demo.py
+```
+
+---
+
+# Data Boundary
+
+The public repository intentionally excludes:
+
+- raw archive files
+- generated warehouse
+- DuckDB database
+
+Only the analytics framework and agent architecture are published.
+
+---
+
+# Results
+
+Current archive modeled:
 
 - 1,822 performances
 - 35,000+ song performances
 - 445 songs
 - 434 venues
 
-Generated analytical datasets include:
+Analytics generated:
 
-- song_profile
-- song_evolution
 - show_dna
-- venue_profile
-- venue_rankings
 - show_embeddings
 - show_historical_significance
 - show_archetypes
 - show_clusters
+- song_profile
+- song_evolution
+- venue_profile
+- venue_rankings
 
-The platform successfully performs multi-agent investigations that combine historical rankings, venue intelligence, repertoire analysis, archetype classification, and similarity modeling into explainable research outputs.
-
----
-
-## Repository Structure
-
-```text
-agents/            Specialized research agents
-analytics/         Analytics builders and feature generation
-docs/              Documentation and submission materials
-evals/             Evaluation datasets
-mcp_server/        MCP server implementation
-scripts/           Demos and test scripts
-skill_executors/   Skill execution layer
-skills/            Skill definitions
-specs/             Project specifications
-tests/             Test suite
-tools/             Archive query tools
-```
+The platform performs complete multi-agent investigations with planning, orchestration, evidence collection, synthesis, and evaluation.
 
 ---
 
-## Data Boundary
+# Why Not Traditional RAG?
 
-The public repository intentionally excludes:
-
-- raw YAML archive files
-- processed archive assets
-- DuckDB warehouse files
-
-The repository publishes the analytics and agent framework while protecting the underlying archive assets.
-
----
-
-## Key Insight
-
-DeadBase separates:
-
-### Cultural Reputation
-
-What fans believe is historically important.
-
-### Archive Evidence
-
-What measurable historical signals support.
-
-This distinction allows researchers to investigate where the archive supports the legend and where the legend extends beyond measurable structure.
+| Traditional RAG | DeadBase |
+|-----------------|----------|
+| Retrieve documents | Plan investigations |
+| Generic prompts | Specification-driven planning |
+| Single assistant | Specialized research agents |
+| Text retrieval | Structured analytics |
+| Opaque reasoning | Explainable evidence |
+| One response | Complete investigation lifecycle |
 
 ---
 
-## Future Work
-
-Potential future research directions include:
-
-- Archive.org review analysis
-- Fan sentiment modeling
-- Tape circulation intelligence
-- Era transition detection
-- Song sequence modeling
-- Advanced clustering
-- Venue lineage analysis
-- Community narrative extraction
-- Historical recommendation systems
-- Interactive research interfaces
-- Cross-domain applications to sports intelligence systems
-
----
-
-## Technology
+# Technology
 
 - Python
 - DuckDB
 - Pandas
 - Scikit-Learn
-- Multi-Agent Architecture
-- Historical Analytics
-- Agent Orchestration
-- Research Synthesis
+- MCP
+- Multi-Agent Systems
+- Analytics Engineering
+- Specification-Driven Development
 
 ---
 
-## Documentation
+# Documentation
 
-Additional project documentation:
+Additional documentation is available in:
 
 - docs/architecture.md
 - docs/demo_script.md
 - docs/deployment.md
 - docs/evaluation.md
-- docs/kaggle_submission.md
-- docs/rubric_checklist.md
+- specs/
+- evals/
 
 ---
 
-## Conclusion
+# Future Work
 
-DeadBase demonstrates how analytics engineering and agent-based reasoning can transform a large cultural archive into an explorable historical intelligence system.
+The architecture was intentionally designed to be domain independent.
 
-Instead of asking:
+The same investigation framework can be applied to:
 
-"Find me a show."
+- Negro League Baseball
+- MLB Historical Intelligence
+- NASCAR Analytics
+- AEW Match Intelligence
+- WNBA Historical Research
+- Financial Intelligence Systems
 
-DeadBase attempts to answer:
+Only the analytics layer and research agents change while the planning, orchestration, investigation session, evidence collection, and evaluation architecture remain the same.
 
-"Help me understand why this show mattered."
+---
+
+# Conclusion
+
+DeadBase demonstrates a reusable architecture for explainable AI research systems.
+
+Instead of building agents that simply retrieve information, DeadBase plans investigations, dynamically orchestrates specialized agents, records evidence, synthesizes findings, and evaluates the entire execution pipeline.
+
+The result is a transparent historical intelligence system capable of answering complex research questions while exposing every step of its reasoning process.

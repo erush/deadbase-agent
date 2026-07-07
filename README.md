@@ -2,7 +2,9 @@
 
 ## What is DeadBase?
 
-DeadBase is not a chatbot.
+DeadBase is an explainable, specification-driven multi-agent historical intelligence platform.
+
+It is not a chatbot.
 
 It is a specification-driven historical intelligence system that conducts structured investigations over the Grateful Dead archive.
 
@@ -412,17 +414,18 @@ Cornell is historically significant, but its reputation cannot be explained by s
 # Repository Structure
 
 ```text
-agents/
-analytics/
-docs/
-evals/
-mcp_server/
-scripts/
-session/
-specs/
-tests/
-tools/
-demo.py
+agents/             Specialized research agents
+analytics/          Analytical feature generation
+docs/               Architecture and project documentation
+evals/              Evaluation datasets and scorecards
+mcp_server/         Model Context Protocol server and tools
+scripts/            Build, validation, and evaluation utilities
+session/            Investigation session management
+skill_executors/    Runtime implementations of agent skills
+skills/             Declarative skill specifications
+specs/              Specification-driven development documents
+tools/              Shared analytical utilities
+demo.py             Interactive multi-agent demonstration
 ```
 
 ---
@@ -443,10 +446,10 @@ Only the analytics framework and agent architecture are published.
 
 Current archive modeled:
 
-- 1,822 performances
+- 2,308 performances
 - 35,000+ song performances
-- 445 songs
-- 434 venues
+- 446 songs
+- 592 venues
 
 Analytics generated:
 
